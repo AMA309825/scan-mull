@@ -1,0 +1,6 @@
+{
+  "name": "Saudi Mall Housewares POS",
+  "description": "نظام الكاشير والباركود المبتكر لمول السعودية للأدوات المنزلية",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

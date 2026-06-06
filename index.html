@@ -1,473 +1,1967 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-	<title>مول السعودية للأدوات المنزلية — نظام POS الماسح</title>
-	<meta name="description" content="نظام نقاط بيع ماسح الباركود وQR متقدم للمحمول - مول السعودية للأدوات المنزلية">
-	<style>
-		:root{
-			--bg:#07111a;
-			--card:#0d1a24cc;
-			--glass:rgba(255,255,255,0.03);
-			--accent:#1fb46a; /* Saudi green */
-			--accent-2:#00e676;
-			--muted:#9aa7b1;
-			--glass-2:rgba(255,255,255,0.02);
-			--glass-border:rgba(255,255,255,0.06);
-		}
-		html,body{height:100%;margin:0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 10% 10%, rgba(16,185,129,0.06), transparent), linear-gradient(160deg,#021018 0%, #071422 60%);color:#e6f2f0}
-		*{box-sizing:border-box}
-		.app{min-height:100vh;display:flex;flex-direction:column}
-
-		/* Loading Screen */
-		.loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(2,6,23,0.9),rgba(3,10,16,0.8));z-index:9999;backdrop-filter:blur(8px)}
-		.boot{width:92%;max-width:880px;color:var(--muted);text-align:center}
-		.logo{font-size:20px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:8px}
-		.progress{height:14px;background:rgba(255,255,255,0.03);border-radius:10px;overflow:hidden;margin:12px 0}
-		.progress > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));box-shadow:0 0 18px rgba(0,230,118,0.18);transition:width 600ms cubic-bezier(.2,.9,.3,1)}
-		.boot-stage{font-size:13px;margin-top:6px}
-		.boot-percent{font-weight:700;color:#c1ffdf}
-
-		/* Layout */
-		header{display:flex;gap:12px;align-items:center;padding:14px;width:100%;backdrop-filter:blur(6px);background:linear-gradient(90deg,transparent,transparent);border-bottom:1px solid rgba(255,255,255,0.02)}
-		.brand{display:flex;flex-direction:column}
-		.brand h1{margin:0;font-size:18px;color:var(--accent)}
-		.brand p{margin:0;font-size:12px;color:var(--muted)}
-		.controls{margin-left:auto;display:flex;gap:8px;align-items:center}
-
-		main{display:flex;flex-direction:column;gap:14px;padding:16px}
-
-		/* Scanner area */
-		.scanner-wrap{display:grid;grid-template-columns:1fr;gap:12px}
-		.video-card{position:relative;border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(14,22,24,0.6),rgba(6,12,14,0.6));box-shadow:0 8px 40px rgba(0,0,0,0.6);border:1px solid var(--glass-border)}
-		video{width:100%;height:360px;object-fit:cover;background:#000000}
-		.scan-overlay{position:absolute;inset:0;pointer-events:none}
-		.scan-border{position:absolute;inset:18px;border-radius:12px;box-shadow:inset 0 0 40px rgba(0,255,150,0.02);border:1px dashed rgba(255,255,255,0.03)}
-		.scan-line{position:absolute;left:12px;right:12px;height:2px;top:50%;transform:translateY(-50%);background:linear-gradient(90deg,transparent,var(--accent),transparent);box-shadow:0 0 18px rgba(31,180,106,0.7);animation:scan 1.6s linear infinite}
-		@keyframes scan{0%{transform:translateY(-140%)}50%{transform:translateY(0%)}100%{transform:translateY(140%)}}
-		.scan-feedback{position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:8px 12px;border-radius:20px;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);font-size:13px}
-
-		.controls-row{display:flex;gap:8px;padding:10px}
-		.btn{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 12px;border-radius:10px;font-weight:600;display:inline-flex;gap:8px;align-items:center;cursor:pointer}
-		.btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#042018;box-shadow:0 8px 30px rgba(0,230,118,0.12);}
-		.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.03)}
-		.btn .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
-
-		/* Product card */
-		.product-card{display:flex;gap:12px;padding:12px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);align-items:center}
-		.p-image{width:120px;height:120px;border-radius:12px;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,rgba(0,0,0,0.3),rgba(255,255,255,0.02));display:flex;align-items:center;justify-content:center}
-		.p-image img{width:100%;height:100%;object-fit:cover}
-		.p-body{flex:1}
-		.p-name{font-size:18px;color:#dfffe8;margin:0}
-		.p-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-		.chip{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:13px;border:1px solid rgba(255,255,255,0.02);color:var(--muted)}
-		.price{font-size:28px;color:var(--accent);font-weight:800}
-
-		/* History and Dashboard */
-		.grid{display:grid;grid-template-columns:1fr;gap:12px}
-		.panel{padding:12px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03)}
-		.history-list{max-height:320px;overflow:auto}
-		.history-item{display:flex;justify-content:space-between;padding:8px;border-bottom:1px dashed rgba(255,255,255,0.02);font-size:13px}
-
-		/* Admin */
-		.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,4,6,0.6);backdrop-filter:blur(6px);z-index:999}
-		.modal-card{width:92%;max-width:760px;border-radius:12px;padding:16px}
-		.form-row{display:flex;gap:8px}
-		input,textarea,select{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px;border-radius:8px;outline:none}
-
-		/* Footer */
-		footer{padding:12px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
-
-		/* responsive */
-		@media(min-width:900px){
-			main{padding:24px}
-			.scanner-wrap{grid-template-columns:2fr 1fr}
-			.grid{grid-template-columns:2fr 1fr}
-			video{height:520px}
-		}
-
-		/* small UI flourishes */
-		.glow{box-shadow:0 6px 40px rgba(0,230,118,0.06)}
-		.success-badge{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:999px;background:linear-gradient(90deg,rgba(0,0,0,0.3),rgba(0,0,0,0.2));border:1px solid rgba(0,255,128,0.06);color:var(--accent)}
-
-	</style>
-</head>
-<body>
-	<div class="app">
-
-		<div class="loader" id="loader">
-			<div class="boot">
-				<div class="logo">مول السعودية للأدوات المنزلية</div>
-				<div id="bootStage" class="boot-stage">Initializing Scanner…</div>
-				<div class="progress"><i id="bootBar"></i></div>
-				<div class="boot-stage">System Ready: <span id="bootPercent" class="boot-percent">0%</span></div>
-			</div>
-		</div>
-
-		<header>
-			<div class="brand">
-				<h1>مول السعودية للأدوات المنزلية</h1>
-				<p>نظام ماسح الباركود والـ QR — مدير: الحاج إسماعيل صلاح</p>
-			</div>
-			<div class="controls">
-				<button class="btn ghost" id="openAdmin">لوحة الإدارة</button>
-				<button class="btn" id="openHistory">سجل المسح</button>
-				<button class="btn primary" id="startScan">تشغيل الماسح</button>
-			</div>
-		</header>
-
-		<main>
-			<section class="scanner-wrap">
-				<div class="video-card">
-					<video id="video" playsinline autoplay muted></video>
-					<div class="scan-overlay">
-						<div class="scan-border"></div>
-						<div class="scan-line" id="scanLine"></div>
-						<div class="scan-feedback" id="scanFeedback">جاهز للمسح</div>
-					</div>
-				</div>
-
-				<div class="panel">
-					<div class="controls-row">
-						<button class="btn" id="toggleTorch">مصباح</button>
-						<button class="btn" id="toggleContinuous">مسح متواصل</button>
-						<button class="btn" id="toggleSound">كتم</button>
-						<button class="btn" id="repeatVoice">إعادة الصوت</button>
-						<button class="btn" id="whatsappBtn">إبلاغ المدير</button>
-					</div>
-
-					<div id="productArea" class="product-card">
-						<div class="p-image"><img id="prodImg" src="" alt="product"></div>
-						<div class="p-body">
-							<h3 id="prodName" class="p-name">لا يوجد منتج</h3>
-							<div class="p-meta">
-								<div class="chip" id="prodBarcode">الباركود: -</div>
-								<div class="chip" id="prodCategory">القسم: -</div>
-								<div class="chip">آخر مسح: <span id="lastScan">-</span></div>
-							</div>
-							<div style="margin-top:12px;display:flex;align-items:center;gap:12px">
-								<div class="price" id="prodPrice">- ج</div>
-								<div id="statusBadge" class="success-badge" style="display:none">✓ تم العثور على المنتج</div>
-							</div>
-						</div>
-					</div>
-
-					<div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-						<div style="flex:1">
-							<div style="font-size:13px;color:var(--muted)">نظام الصوت</div>
-							<input id="volume" type="range" min="0" max="1" step="0.01" value="0.9" style="width:100%">
-						</div>
-					</div>
-				</div>
-
-			</section>
-
-			<section class="grid">
-				<div class="panel">
-					<h3 style="margin-top:0">لوحة الإحصاءات</h3>
-					<div style="display:flex;gap:12px;flex-wrap:wrap">
-						<div class="panel" style="flex:1;min-width:140px">
-							<div style="font-size:12px;color:var(--muted)">مجموع المسحات</div>
-							<div id="statTotal" style="font-size:20px;font-weight:800">0</div>
-						</div>
-						<div class="panel" style="flex:1;min-width:140px">
-							<div style="font-size:12px;color:var(--muted)">مسحات اليوم</div>
-							<div id="statToday" style="font-size:20px;font-weight:800">0</div>
-						</div>
-						<div class="panel" style="flex:1;min-width:140px">
-							<div style="font-size:12px;color:var(--muted)">الأكثر مسحاً</div>
-							<div id="statTop" style="font-size:16px">-</div>
-						</div>
-						<div class="panel" style="flex:1;min-width:140px">
-							<div style="font-size:12px;color:var(--muted)">آخر منتج</div>
-							<div id="statLast" style="font-size:16px">-</div>
-						</div>
-					</div>
-				</div>
-
-				<div class="panel">
-					<h3 style="margin-top:0">إدارة سريعة</h3>
-					<div style="display:flex;flex-direction:column;gap:8px">
-						<button class="btn" id="exportData">تصدير JSON</button>
-						<button class="btn" id="importData">استيراد JSON</button>
-						<button class="btn" id="backupData">نسخ احتياطي</button>
-						<button class="btn" id="restoreData">استعادة من نسخة</button>
-					</div>
-				</div>
-			</section>
-
-			<section class="panel">
-				<h3 style="margin-top:0">سجل المسح</h3>
-				<input id="historySearch" placeholder="بحث بالاسم أو الباركود" style="width:100%;margin-bottom:8px">
-				<div class="history-list" id="historyList" aria-live="polite"></div>
-			</section>
-
-		</main>
-
-		<footer>
-			<div>إدارة: الحاج إسماعيل صلاح — رقم الإدارة: 01101362148</div>
-			<div>تم تطوير النظام بواسطة: أنس حورس — رقم المبرمج: 01558364953 — Portfolio: https://ama309825.github.io/Portfolio-anas/</div>
-		</footer>
-
-	</div>
-
-
-	<!-- Admin Modal (hidden by default) -->
-	<div id="adminModal" class="modal" style="display:none">
-		<div class="modal-card panel">
-			<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-				<h3 style="margin:0">لوحة الإدارة</h3>
-				<button class="btn" id="closeAdmin">إغلاق</button>
-			</div>
-			<div style="display:flex;gap:12px;flex-direction:column">
-				<div style="display:flex;gap:8px">
-					<input id="adminSearch" placeholder="بحث منتجات" style="flex:1">
-					<button class="btn primary" id="newProductBtn">إضافة منتج</button>
-				</div>
-				<div id="adminList" style="max-height:320px;overflow:auto"></div>
-				<div style="display:flex;gap:8px">
-					<button class="btn" id="adminImport">استيراد منتجات</button>
-					<button class="btn" id="adminExport">تصدير منتجات</button>
-					<button class="btn" id="adminBackup">نسخ احتياطي كامل</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- New/Edit Product Modal -->
-	<div id="productModal" class="modal" style="display:none">
-		<div class="modal-card panel">
-			<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-				<h3 id="productModalTitle">إضافة منتج</h3>
-				<button class="btn" id="productModalClose">إغلاق</button>
-			</div>
-			<div style="display:flex;flex-direction:column;gap:8px">
-				<input id="p_name" placeholder="اسم المنتج">
-				<input id="p_barcode" placeholder="الباركود (مثال: 5359*1165006)">
-				<input id="p_category" placeholder="الفئة">
-				<textarea id="p_description" placeholder="الوصف"></textarea>
-				<input id="p_image" placeholder="الصورة (بيانات URI أو رابط)">
-				<div style="display:flex;gap:8px">
-					<button class="btn primary" id="saveProduct">حفظ</button>
-					<button class="btn" id="cancelProduct">إلغاء</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<input type="file" id="fileImport" accept="application/json" style="display:none">
-
-	<script>
-		// ====== Store & Developer Info ======
-		const STORE = {
-			name: 'مول السعودية للأدوات المنزلية',
-			manager: 'الحاج إسماعيل صلاح',
-			managerPhone: '01101362148',
-			developer: 'أنس حورس',
-			developerPhone: '01558364953',
-			developerPortfolio: 'https://ama309825.github.io/Portfolio-anas/'
-		};
-
-		// ====== Local Product Database (sample entries with inline SVG data images) ======
-		const defaultProducts = [
-			{name:'طاسة كريب 36',barcode:'5359*1165006',category:'أواني الطهي',description:'طاسة عالية الجودة بقُطر 36 سم، سطح غير لاصق.',image:generateSVGData('طاسة','#e76f51')},
-			{name:'عصارة فواكه سعة 1.5 لتر',barcode:'5359*112000006',category:'أجهزة كهربائية',description:'عصارة متعددة السرعات بقوة 800 واط.',image:generateSVGData('عصارة','#2a9d8f')},
-			{name:'مقلاة تيفال 24',barcode:'5359*11650006',category:'أواني الطهي',description:'مقلاة مغلفة بطبقة سيراميك مقاومة للخدش.',image:generateSVGData('مقلاة','#6a4c93')}
-		];
-
-		function generateSVGData(label, color){
-			const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'><rect width='100%' height='100%' fill='${color}' rx='20'/><text x='50%' y='50%' font-size='36' text-anchor='middle' fill='white' font-family='Arial' dy='.35em'>${label}</text></svg>`;
-			return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
-		}
-
-		// ====== Utilities ======
-		function $(s){return document.querySelector(s)}
-		function $all(s){return Array.from(document.querySelectorAll(s))}
-
-		// ====== Storage Keys ======
-		const PKEY = 'msa_products_v1';
-		const HKEY = 'msa_history_v1';
-		const CONFKEY = 'msa_conf_v1';
-
-		// ====== Load/Save ======
-		function loadProducts(){
-			try{const raw = localStorage.getItem(PKEY); if(!raw) {localStorage.setItem(PKEY, JSON.stringify(defaultProducts)); return defaultProducts;} const js=JSON.parse(raw); return js} catch(e){console.error(e); localStorage.setItem(PKEY, JSON.stringify(defaultProducts)); return defaultProducts}
-		}
-		function saveProducts(arr){localStorage.setItem(PKEY,JSON.stringify(arr))}
-		function loadHistory(){try{const raw=localStorage.getItem(HKEY); return raw?JSON.parse(raw):[]}catch(e){return []}}
-		function saveHistory(h){localStorage.setItem(HKEY,JSON.stringify(h))}
-
-		let products = loadProducts();
-		let history = loadHistory();
-
-		// ====== Extract Price Logic (per spec) ======
-		function extractPrice(barcode){
-			try{
-				const afterStar = barcode.split('*')[1] || '';
-				if(afterStar.length<4) return 0;
-				return Number(afterStar.slice(2,-2));
-			}catch(e){return 0}
-		}
-
-		// ====== Camera & Scanner Setup ======
-		const video = $('#video');
-		let stream = null; let track = null; let detector = null; let continuous = false; let scanning = false; let torchOn = false; let lastScannedAt = 0;
-
-		async function startCamera(){
-			if(stream) return;
-			try{
-				stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
-				video.srcObject = stream;
-				track = stream.getVideoTracks()[0];
-				// try BarcodeDetector
-				if('BarcodeDetector' in window){
-					try{ detector = new BarcodeDetector({formats: ['qr_code','ean_13','code_128','code_39','upc_a','upc_e','code_93']}); }catch(e){detector=null}
-				}
-				scanning = true; $('#scanFeedback').textContent='الماسح يعمل';
-				requestAnimationFrame(scanLoop);
-			}catch(e){console.error(e); alert('فشل في الوصول إلى الكاميرا. تأكد من الأذونات.'); }
-		}
-
-		async function stopCamera(){ if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null; track=null; scanning=false; video.srcObject=null; $('#scanFeedback').textContent='تم إيقاف الكاميرا';} }
-
-		async function toggleTorch(){ if(!track) return; const capabilities = track.getCapabilities(); if(!capabilities.torch){alert('المصباح غير مدعوم على جهازك');return} torchOn = !torchOn; try{await track.applyConstraints({advanced:[{torch:torchOn}]}); $('#toggleTorch').classList.toggle('active', torchOn)}catch(e){console.warn(e);} }
-
-		function playBeep(){try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator();const g=ctx.createGain();o.type='sine';o.frequency.value=900;g.gain.value=0.02;o.connect(g);g.connect(ctx.destination);o.start();setTimeout(()=>{o.stop();ctx.close()},120);}catch(e){}}
-
-		// Speech
-		let lastSpokenText=''; let muted=false; const synth = window.speechSynthesis;
-		function speakArabic(text,rate=0.95){ if(muted) return; try{const u=new SpeechSynthesisUtterance(text); u.lang='ar-SA'; u.rate=rate; u.volume=parseFloat($('#volume').value||0.9); // try to choose Arabic voice
-			const voices = synth.getVoices(); if(voices && voices.length){const v = voices.find(x=>x.lang && x.lang.startsWith('ar')) || voices.find(x=>x.name && x.name.toLowerCase().includes('arab')) || voices[0]; if(v) u.voice=v}
-			lastSpokenText=text; synth.cancel(); synth.speak(u);}catch(e){console.warn(e)} }
-
-		// Convert number to Arabic words (basic, covers up to millions)
-		const AR_UNITS=['صفر','واحد','اثنان','ثلاثة','أربعة','خمسة','ستة','سبعة','ثمانية','تسعة'];
-		const AR_TENS=['عشرة','عشرون','ثلاثون','أربعون','خمسون','ستون','سبعون','ثمانون','تسعون'];
-		const AR_TEENS=['عشرة','أحد عشر','اثنا عشر','ثلاثة عشر','أربعة عشر','خمسة عشر','ستة عشر','سبعة عشر','ثمانية عشر','تسعة عشر'];
-		function numberToArabicWords(n){ n = Math.floor(Math.abs(Number(n)||0)); if(n===0) return 'صفر'; if(n<10) return AR_UNITS[n]; if(n<20) return AR_TEENS[n-10] || n; if(n<100){ const tens=Math.floor(n/10); const unit=n%10; return unit? AR_UNITS[unit] + ' و' + AR_TENS[tens-1] : AR_TENS[tens-1]; }
-			if(n<1000){ const hundreds=Math.floor(n/100); const rem=n%100; const hword = hundreds===1? 'مائة' : (hundreds===2? 'مئتان' : AR_UNITS[hundreds] + 'مائة'); return rem? hword + ' و' + numberToArabicWords(rem) : hword }
-			if(n<1000000){ const thousands=Math.floor(n/1000); const rem=n%1000; let tword = (thousands===1? 'ألف' : (thousands===2? 'ألفان' : numberToArabicWords(thousands) + ' ألف')); return rem? tword + ' و' + numberToArabicWords(rem) : tword }
-			const millions = Math.floor(n/1000000); const rem = n%1000000; let mword = millions===1? 'مليون' : (millions===2? 'مليونان' : numberToArabicWords(millions) + ' مليون'); return rem? mword + ' و' + numberToArabicWords(rem) : mword
-		}
-
-		// Scan processing
-		async function scanLoop(){ if(!scanning) return; try{
-				if(detector){
-					const barcodes = await detector.detect(video);
-					if(barcodes && barcodes.length){ handleDetect(barcodes[0].rawValue || barcodes[0].rawData || barcodes[0].raw || ''); }
-				} else {
-					// no native detector — user will still be able to use camera and admin features
-				}
-			}catch(e){console.warn(e)} finally{ requestAnimationFrame(scanLoop) } }
-
-		let lastResult = null;
-		function handleDetect(code){
-			const now = Date.now();
-			if(!continuous && now - lastScannedAt < 1200) return; // debounce
-			lastScannedAt = now; lastResult=code;
-			// visual feedback
-			$('#statusBadge').style.display='inline-flex'; $('#scanFeedback').textContent='تم قراءة: '+code; document.body.classList.add('flash'); setTimeout(()=>document.body.classList.remove('flash'),200);
-			playBeep(); animateSuccess();
-
-			const price = extractPrice(code);
-			const prod = products.find(p=>p.barcode===code) || {name:'غير معروف',barcode:code,category:'غير محدد',description:'لا يوجد وصف',image:generateSVGData('غير معروف','#333')};
-
-			// Update product card
-			$('#prodImg').src = prod.image || generateSVGData('منتج','#224');
-			$('#prodName').textContent = prod.name;
-			$('#prodBarcode').textContent = 'الباركود: ' + code;
-			$('#prodCategory').textContent = 'القسم: ' + (prod.category||'-');
-			$('#prodPrice').textContent = price.toLocaleString() + ' ج';
-			const dt = new Date(); $('#lastScan').textContent = dt.toLocaleString();
-
-			// Save history
-			const entry = {name:prod.name,barcode:code,price, date:dt.toLocaleDateString('ar-EG'), time:dt.toLocaleTimeString('ar-EG')};
-			history.unshift(entry); if(history.length>1000) history.pop(); saveHistory(history); renderHistory(); renderStats();
-
-			// Voice
-			const spokenName = prod.name;
-			const priceWords = numberToArabicWords(price);
-			speakArabic(`${spokenName} . السعر ${priceWords} جنيه`);
-		}
-
-		function animateSuccess(){ const el = $('#statusBadge'); el.style.transform='scale(0.95)'; el.style.opacity='0'; setTimeout(()=>{el.style.transform='scale(1)'; el.style.opacity='1'},50)}
-
-		// UI Bindings
-		$('#startScan').addEventListener('click', ()=>{ startCamera(); $('#loader').style.display='none'; });
-		$('#toggleTorch').addEventListener('click', toggleTorch);
-		$('#toggleContinuous').addEventListener('click', ()=>{ continuous = !continuous; $('#toggleContinuous').classList.toggle('active', continuous); $('#toggleContinuous').textContent = continuous? 'مسح متواصل: متاح' : 'مسح متواصل'; });
-		$('#toggleSound').addEventListener('click', ()=>{ muted = !muted; $('#toggleSound').textContent = muted? 'صوت: مكتوم' : 'كتم'; });
-		$('#repeatVoice').addEventListener('click', ()=>{ if(lastSpokenText) speakArabic(lastSpokenText); });
-		$('#whatsappBtn').addEventListener('click', ()=>{ openWhatsAppWithLast(); });
-
-		function openWhatsAppWithLast(){ if(!lastResult){ alert('لا يوجد منتج مُسح بعد'); return;} const code = lastResult; const prod = products.find(p=>p.barcode===code) || {name:'غير معروف'}; const price = extractPrice(code); const dt=new Date(); const date = dt.toLocaleDateString('ar-EG'); const time = dt.toLocaleTimeString('ar-EG'); const msg = `السلام عليكم حاج إسماعيل،%0A%0Aتم الاستعلام عن المنتج:%0A%0Aاسم المنتج:%0A${encodeURIComponent(prod.name)}%0A%0Aالباركود:%0A${code}%0A%0Aالسعر:%0A${price} ج%0A%0Aالتاريخ:%0A${date}%0A%0Aالوقت:%0A${time}%0A%0Aتم الإرسال من نظام مول السعودية للأدوات المنزلية.`; const url = `https://api.whatsapp.com/send?phone=${STORE.managerPhone}&text=${msg}`; window.open(url,'_blank'); }
-
-		// History
-		function renderHistory(filter=''){ const list = $('#historyList'); list.innerHTML=''; const q = filter.trim().toLowerCase(); const items = history.filter(h=> !q || h.name.toLowerCase().includes(q) || h.barcode.includes(q)); if(!items.length){ list.innerHTML = '<div style="padding:12px;color:var(--muted)">لا توجد سجلات</div>'; return} items.forEach(it=>{ const div=document.createElement('div'); div.className='history-item'; div.innerHTML = `<div><div style="font-weight:700">${it.name}</div><div style="color:var(--muted);font-size:12px">${it.barcode} · ${it.date} ${it.time}</div></div><div style="text-align:right"><div style="font-weight:800;color:var(--accent)">${it.price.toLocaleString()} ج</div></div>`; list.appendChild(div)});
-		}
-
-		$('#historySearch').addEventListener('input', e=>renderHistory(e.target.value));
-
-		// Stats
-		function renderStats(){ $('#statTotal').textContent = history.length; const today = new Date().toLocaleDateString('ar-EG'); $('#statToday').textContent = history.filter(h=>h.date===today).length; $('#statLast').textContent = history.length? history[0].name : '-';
-			// most scanned
-			const map = {}; history.forEach(h=>map[h.name]=(map[h.name]||0)+1); const top = Object.keys(map).sort((a,b)=>map[b]-map[a])[0] || '-'; $('#statTop').textContent = top;
-		}
-
-		// Admin
-		$('#openAdmin').addEventListener('click', ()=>{ const pass = prompt('أدخل كلمة مرور المسؤول:'); if(!pass) return; const stored = localStorage.getItem('msa_admin_pass') || 'admin123'; if(pass===stored){ $('#adminModal').style.display='flex'; renderAdminList(); } else { alert('كلمة المرور غير صحيحة'); } });
-		$('#closeAdmin').addEventListener('click', ()=>$('#adminModal').style.display='none');
-
-		$('#newProductBtn').addEventListener('click', ()=>{ openProductModal(); });
-		function renderAdminList(filter=''){ const root = $('#adminList'); root.innerHTML=''; const q = filter.trim().toLowerCase(); products.filter(p=>!q || p.name.toLowerCase().includes(q) || p.barcode.includes(q)).forEach((p,idx)=>{
-			const div=document.createElement('div'); div.style.padding='8px'; div.style.borderBottom='1px dashed rgba(255,255,255,0.03)'; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:800">${p.name}</div><div style="font-size:12px;color:var(--muted)">${p.barcode} · ${p.category||''}</div></div><div style="display:flex;gap:6px"><button class="btn" data-idx="${idx}" data-act="edit">تعديل</button><button class="btn" data-idx="${idx}" data-act="del">حذف</button></div></div>`; root.appendChild(div);
-		});
-		}
-
-		$('#adminList').addEventListener('click', e=>{ const btn = e.target.closest('button'); if(!btn) return; const idx = Number(btn.dataset.idx); const act = btn.dataset.act; if(act==='edit'){ openProductModal(products[idx], idx); } if(act==='del'){ if(confirm('هل تود حذف المنتج؟')){ products.splice(idx,1); saveProducts(products); renderAdminList(); } } });
-
-		$('#adminSearch').addEventListener('input', e=>renderAdminList(e.target.value));
-
-		// Product modal
-		function openProductModal(product=null, idx=null){ $('#productModal').style.display='flex'; $('#productModalTitle').textContent = product? 'تعديل منتج' : 'إضافة منتج'; $('#p_name').value = product? product.name : ''; $('#p_barcode').value = product? product.barcode : ''; $('#p_category').value = product? product.category : ''; $('#p_description').value = product? product.description : ''; $('#p_image').value = product? product.image : ''; $('#saveProduct').dataset.idx = idx!==null? idx : ''; }
-		$('#productModalClose').addEventListener('click', ()=>$('#productModal').style.display='none');
-		$('#cancelProduct').addEventListener('click', ()=>$('#productModal').style.display='none');
-		$('#saveProduct').addEventListener('click', ()=>{ const idx = $('#saveProduct').dataset.idx; const item = {name:$('#p_name').value.trim(), barcode:$('#p_barcode').value.trim(), category:$('#p_category').value.trim(), description:$('#p_description').value.trim(), image:$('#p_image').value.trim() || generateSVGData($('#p_name').value || 'منتج','#2b6')}; if(!item.name||!item.barcode){alert('الاسم والباركود مطلوبان');return} if(idx!==''){ products[idx]=item } else products.unshift(item); saveProducts(products); renderAdminList(); $('#productModal').style.display='none'; });
-
-		// Import / Export
-		$('#exportData').addEventListener('click', ()=>{ const data = {products,history}; const blob = new Blob([JSON.stringify(data, null, 2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='msa_backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
-		$('#importData').addEventListener('click', ()=>$('#fileImport').click());
-		$('#fileImport').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload = ()=>{ try{ const parsed=JSON.parse(r.result); if(parsed.products) { products=parsed.products; saveProducts(products); alert('تم استيراد المنتجات'); } if(parsed.history){ history=parsed.history; saveHistory(history); renderHistory(); renderStats(); alert('تم استيراد السجل'); } }catch(err){alert('فشل في قراءة الملف') } }; r.readAsText(f); });
-
-		// Backup / Restore
-		$('#backupData').addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify({products,history,meta:STORE},null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='msa_full_backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
-		$('#restoreData').addEventListener('click', ()=>$('#fileImport').click());
-
-		// Admin quick import/export
-		$('#adminExport').addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(products,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='products.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
-		$('#adminImport').addEventListener('click', ()=>$('#fileImport').click());
-
-		// Initialize UI
-		function initUI(){ renderHistory(); renderStats(); renderAdminList(); // boot sequence animation
-			const stages = ['Initializing Scanner…','Loading Product Database…','Loading Voice Engine…','Loading Dashboard…','System Ready…']; let i=0; const bar = $('#bootBar'); const btxt=$('#bootStage'); const pct=$('#bootPercent'); const iv=setInterval(()=>{ i++; const percent = Math.min(100, i*16); bar.style.width = percent+'%'; pct.textContent = percent + '%'; btxt.textContent = stages[Math.min(stages.length-1, Math.floor(i/2))]; if(percent>=100){ clearInterval(iv); setTimeout(()=>document.getElementById('loader').style.display='none',900); } },230);
-		}
-
-		// start voice engine warm-up
-		window.speechSynthesis.onvoiceschanged = ()=>{};
-
-		// initial load
-		initUI();
-
-		// small helpers
-		$('#openHistory').addEventListener('click', ()=>{ window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}) });
-
-		// allow mobile orientation sensor parallax (minor)
-		if(window.DeviceOrientationEvent){ window.addEventListener('deviceorientation', e=>{ const x = e.gamma || 0; document.querySelectorAll('.product-card').forEach(el=>el.style.transform = `translateX(${x*0.02}px)`); }); }
-
-		// cleanup on unload
-		window.addEventListener('beforeunload', ()=>{ if(stream) stopCamera(); });
-
-	</script>
-</body>
+<html lang="ar" dir="rtl" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>مول السعودية للأدوات المنزلية - POS الذكي</title>
+    <!-- Google Fonts for premium cyberarabic look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Material Symbols for enterprise-grade icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    
+    <!-- Tailwind CSS v4 Browser Script -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <!-- Robust Html5Qrcode Library for seamless camera scanning -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+      /* Smooth custom styles & glow utilities */
+      body {
+        font-family: 'Cairo', sans-serif;
+        background-color: #050705;
+        color: #e0e0e0;
+        overflow-x: hidden;
+      }
+      .font-digital {
+        font-family: 'Orbitron', 'JetBrains Mono', sans-serif;
+      }
+      .glow-border {
+        box-shadow: 0 0 15px rgba(0, 170, 79, 0.2);
+        border: 1px solid rgba(0, 170, 79, 0.4);
+      }
+      .glow-border:hover {
+        box-shadow: 0 0 25px rgba(0, 255, 65, 0.4);
+        border-color: rgba(0, 255, 65, 0.6);
+      }
+      .glow-text-green {
+        text-shadow: 0 0 8px #00FF41;
+      }
+      .glow-text-gold {
+        text-shadow: 0 0 8px #FFD700;
+      }
+      .glass-panel {
+        background: rgba(10, 12, 10, 0.75);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #050705;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #00A94F;
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #00FF41;
+      }
+      /* Scanning animation */
+      @keyframes laser {
+        0%, 100% { top: 10%; }
+        50% { top: 90%; }
+      }
+      .laser-line {
+        animation: laser 3.5s infinite ease-in-out;
+      }
+      /* Ripple effects */
+      .ripple {
+        position: relative;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body class="h-full flex flex-col antialiased selection:bg-[#00A94F] selection:text-white">
+    <!-- BACKGROUND CANVAS (Reactive Grid & Light Trails) -->
+    <canvas id="digitalBackground" class="fixed inset-0 -z-10 pointer-events-none opacity-40"></canvas>
+
+    <!-- LOADING SCREEN -->
+    <div id="loadingScreen" class="fixed inset-0 z-50 bg-[#050705] flex flex-col items-center justify-center p-6 transition-all duration-700">
+      <div id="loadingParticles" class="absolute inset-0 z-0 pointer-events-none opacity-30"></div>
+      
+      <div class="relative z-10 text-center space-y-6 max-w-lg w-full">
+        <!-- Logo Icon -->
+        <div class="relative inline-block">
+          <div class="w-24 h-24 bg-gradient-to-br from-[#006C35] to-[#00A94F] rounded-2xl flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(0,170,79,0.5)] animate-bounce">
+            <span class="material-symbols-outlined text-white text-5xl font-bold">barcode_reader</span>
+          </div>
+          <div class="absolute -inset-2 bg-[#00FF41]/20 rounded-2xl blur-lg animate-pulse"></div>
+        </div>
+
+        <div class="space-y-2">
+          <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-wider">مول السعودية للأدوات المنزلية</h1>
+          <p class="text-xs font-bold uppercase tracking-widest text-[#00A94F] opacity-90">نظام كاشير وقارئ باركود ذكي ثنائي الأصوات</p>
+        </div>
+
+        <!-- Terminal Output simulation -->
+        <div class="bg-black/60 border border-white/5 p-4 rounded-xl text-[11px] font-mono text-right text-[#00FF41]/70 h-36 overflow-y-auto space-y-1" id="bootTerminal">
+          <div>&gt; بدء تهيئة موارد البيئة المحيطة...</div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10">
+            <div id="bootProgress" class="bg-gradient-to-r from-[#006C35] to-[#00FF41] h-full w-0 transition-all duration-100 shadow-[0_0_10px_#00FF41]"></div>
+          </div>
+          <div class="flex justify-between text-xs text-white/50 font-mono">
+            <span id="bootPercent">0%</span>
+            <span>بناء الاتصال الآمن</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN HEADER -->
+    <header class="h-16 flex items-center justify-between px-4 lg:px-8 bg-[#0a0c0a]/90 backdrop-blur-md border-b border-[#006C35]/30 sticky top-0 z-40 shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-[#006C35] to-[#00A94F] rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(0,108,53,0.4)] transition-all hover:scale-105">
+          <span class="material-symbols-outlined text-white text-2xl font-bold">barcode_reader</span>
+        </div>
+        <div>
+          <h1 class="text-base lg:text-lg font-bold text-white leading-tight">مول السعودية للأدوات المنزلية</h1>
+          <p class="text-[10px] uppercase tracking-widest text-[#00A94F] font-bold opacity-80 font-digital">Enterprise POS System v2.6</p>
+        </div>
+      </div>
+
+      <!-- Quick Server Details and Settings -->
+      <div class="flex items-center gap-2 lg:gap-4">
+        <!-- Live Clock -->
+        <div class="hidden md:flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
+          <span class="material-symbols-outlined text-xs text-white/50">schedule</span>
+          <span id="headerClock" class="text-xs font-mono text-white/90 font-digital">2026/06/06 20:36:00</span>
+        </div>
+
+        <!-- Connection Badge -->
+        <div class="flex items-center gap-1.5 bg-black/40 px-3 py-1.5 rounded-full border border-white/10 shrink-0">
+          <div class="w-2 h-2 bg-[#00FF41] rounded-full animate-ping"></div>
+          <span class="text-[11px] font-mono text-[#00FF41]">النظام جاهز للعمل</span>
+        </div>
+
+        <!-- Notification Bell -->
+        <button onclick="triggerVoiceWelcome()" class="p-2 hover:bg-white/5 rounded-full text-white/60 hover:text-white transition-colors relative" title="اختبار الصوت">
+          <span class="material-symbols-outlined text-lg">volume_up</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- WRAPPER LAYOUT -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+      
+      <!-- SIDEBAR NAVIGATION -->
+      <aside class="w-full lg:w-64 bg-[#0a0c0a]/65 backdrop-blur-md border-b lg:border-b-0 lg:border-l border-white/5 p-4 lg:p-6 flex flex-col gap-4 shrink-0 overflow-y-auto">
+        <!-- Navigation Buttons -->
+        <nav class="grid grid-cols-2 lg:grid-cols-1 gap-2 shrink-0">
+          <button id="btnScanner" onclick="switchTab('scanner')" class="tab-button w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all shadow-md bg-[#006C35]/25 border border-[#00A94F]/50 text-white font-semibold">
+            <span class="material-symbols-outlined text-[#00FF41] text-lg">photo_camera</span>
+            <span class="text-sm">الماسح الضوئي</span>
+          </button>
+          
+          <button id="btnHistory" onclick="switchTab('history')" class="tab-button w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all text-white/60 hover:bg-white/5 hover:text-white border border-transparent">
+            <span class="material-symbols-outlined text-lg">history_edu</span>
+            <span class="text-sm">سجل العمليات</span>
+          </button>
+          
+          <button id="btnDatabase" onclick="switchTab('database')" class="tab-button w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all text-white/60 hover:bg-white/5 hover:text-white border border-transparent">
+            <span class="material-symbols-outlined text-lg">database</span>
+            <span class="text-sm">قاعدة المنتجات</span>
+          </button>
+
+          <button id="btnDashboard" onclick="switchTab('dashboard')" class="tab-button w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl transition-all text-white/60 hover:bg-white/5 hover:text-white border border-transparent">
+            <span class="material-symbols-outlined text-lg">leaderboard</span>
+            <span class="text-sm">لوحة الإحصائيات</span>
+          </button>
+        </nav>
+
+        <hr class="border-white/5 my-2">
+
+        <!-- Today's Quick Stats Widget -->
+        <div class="p-4 rounded-xl bg-black/40 border border-white/5 space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="text-xs font-bold text-[#00A94F] uppercase tracking-wider">سجل الفحص اليومي</h3>
+            <span class="material-symbols-outlined text-xs text-white/40">query_stats</span>
+          </div>
+          <div class="space-y-3">
+            <div class="flex justify-between items-end">
+              <span class="text-xs opacity-60">إجمالي اليوم</span>
+              <span id="quickTotalScans" class="text-lg font-digital font-bold text-white">0</span>
+            </div>
+            <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+              <div id="quickStatsProgress" class="bg-gradient-to-r from-[#00A94F] to-[#00FF41] h-full w-0 transition-all duration-500"></div>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] text-white/40">
+                <span>السلعة الأكثر بحثاً:</span>
+              </div>
+              <p id="quickFavItem" class="text-xs font-bold text-white truncate text-right">لا يوجد</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manager Quick Contact Card -->
+        <div class="mt-auto p-4 rounded-xl bg-gradient-to-br from-[#002211] to-[#0a0c0a] border border-[#006C35]/20 shrink-0">
+          <p class="text-[10px] text-[#00A94F] font-bold uppercase mb-1">مدير ومسؤول الفرع</p>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-[#006C35] rounded-full flex items-center justify-center">
+              <span class="material-symbols-outlined text-white text-sm">person</span>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-white">الحاج إسماعيل صلاح</p>
+              <p class="text-[11px] text-[#00A94F]/80 font-mono font-digital">01101362148</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN ROUTE VIEWS CONTAINER -->
+      <main class="flex-1 flex flex-col overflow-y-auto p-4 lg:p-6 gap-6 relative">
+        
+        <!-- SECTION 1: SMART CAMERA SCANNER VIEW -->
+        <section id="tab-scanner" class="flex-1 flex flex-col lg:flex-row gap-6">
+          
+          <!-- LEFT SIDE: LIVE VIEWPORT -->
+          <div class="flex-1 flex flex-col gap-4">
+            <div class="relative flex-1 min-h-[320px] md:min-h-[460px] rounded-3xl bg-black border border-white/15 overflow-hidden shadow-2xl flex flex-col">
+              
+              <!-- Real Camera View Container -->
+              <div id="reader" class="absolute inset-0 w-full h-full object-cover"></div>
+              
+              <!-- Animated Cam Placeholder & Simulator (when camera off or starting) -->
+              <div id="cameraPlaceholder" class="absolute inset-0 bg-gradient-to-b from-[#0a0f0a] to-black flex flex-col items-center justify-center p-6 text-center z-10 transition-all duration-500">
+                <div class="relative mb-4">
+                  <span class="material-symbols-outlined text-[80px] text-white/10 animate-pulse">videocam_off</span>
+                  <div class="absolute -inset-1 bg-[#00FF41]/5 rounded-full blur-xl"></div>
+                </div>
+                <h3 class="text-lg font-bold text-white">كاميرا الماسح غير نشطة</h3>
+                <p class="text-xs text-white/40 max-w-xs mt-1">الرجاء تشغيل الكاميرا لبدء فحص باركود المنتجات واستخراج الأسعار تلقائياً</p>
+                
+                <!-- Quick Simulator triggers for testing without camera -->
+                <div class="mt-6 p-4 bg-white/5 border border-white/5 rounded-2xl w-full max-w-sm">
+                  <p class="text-xs text-white/50 mb-3 font-semibold">تنزيل باركود تجريبي للفحص السريع دون كاميرا:</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button onclick="simulateScan('5359*1165006')" class="px-2.5 py-1.5 bg-[#006C35]/30 hover:bg-[#006C35]/60 border border-[#00A94F]/30 rounded-lg text-[11px] text-white transition-all truncate">
+                      طاسة كريب 650ج
+                    </button>
+                    <button onclick="simulateScan('5359*111200006')" class="px-2.5 py-1.5 bg-[#006C35]/30 hover:bg-[#006C35]/60 border border-[#00A94F]/30 rounded-lg text-[11px] text-white transition-all truncate">
+                      حلل جرانيت 12000ج
+                    </button>
+                    <button onclick="simulateScan('5359*11500006')" class="px-2.5 py-1.5 bg-[#006C35]/30 hover:bg-[#006C35]/60 border border-[#00A94F]/30 rounded-lg text-[11px] text-white transition-all truncate">
+                      عجان هوميكس 5000ج
+                    </button>
+                    <button onclick="simulateScan('5359*1145006')" class="px-2.5 py-1.5 bg-[#006C35]/30 hover:bg-[#006C35]/60 border border-[#00A94F]/30 rounded-lg text-[11px] text-white transition-all truncate">
+                      غلاية مياه 450ج
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- LASER HUD LAYER (Overlays on live reader as well) -->
+              <div class="absolute inset-0 z-20 pointer-events-none">
+                <!-- Laser Scanning line -->
+                <div id="scannerLaser" class="laser-line hidden absolute left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-[#00FF41] to-transparent shadow-[0_0_15px_#00FF41]"></div>
+                
+                <!-- Camera HUD Borders -->
+                <div class="absolute top-8 left-8 w-8 h-8 border-t-4 border-l-4 border-[#00A94F] rounded-tl-lg"></div>
+                <div class="absolute top-8 right-8 w-8 h-8 border-t-4 border-r-4 border-[#00A94F] rounded-tr-lg"></div>
+                <div class="absolute bottom-8 left-8 w-8 h-8 border-b-4 border-l-4 border-[#00A94F] rounded-bl-lg"></div>
+                <div class="absolute bottom-8 right-8 w-8 h-8 border-b-4 border-r-4 border-[#00A94F] rounded-br-lg"></div>
+
+                <!-- Custom Scan Indicator -->
+                <div class="absolute top-4 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-md border border-white/10 px-4 py-1 rounded-full flex items-center gap-2">
+                  <div class="w-2 h-2 bg-[#00FF41] rounded-full animate-ping"></div>
+                  <span class="text-[10px] font-mono tracking-widest text-[#00FF41] font-digital">SCANNING READINESS</span>
+                </div>
+              </div>
+
+              <!-- FLASH LIGHT & CAMERA TOGGLES -->
+              <div class="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-between gap-4">
+                <button id="btnToggleCamera" onclick="toggleCamera()" class="px-5 py-2.5 bg-white text-black font-extrabold rounded-xl flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all text-xs cursor-pointer">
+                  <span class="material-symbols-outlined text-sm">videocam</span>
+                  <span id="btnToggleCameraText">تشغيل الكاميرا</span>
+                </button>
+
+                <div class="flex gap-2">
+                  <button id="btnFlash" onclick="toggleFlash()" class="w-10 h-10 bg-black/60 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center hover:bg-black/80 text-white transition-all" title="تشغيل الكشاف">
+                    <span class="material-symbols-outlined text-lg">flashlight_on</span>
+                  </button>
+                  <button onclick="showCustomBarcodePrompt()" class="w-10 h-10 bg-[#00A94F]/80 backdrop-blur-md border border-[#00FF41]/20 rounded-xl flex items-center justify-center hover:bg-[#00FF41] text-white transition-all" title="إدخال كود يدوياً">
+                    <span class="material-symbols-outlined text-lg">keyboard</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- SUCCESS SCAN CONFIRMATION OVERLAY (FLASH) -->
+              <div id="successFlash" class="absolute inset-0 bg-[#00FF41]/30 backdrop-blur-xs z-30 hidden items-center justify-center transition-all duration-300">
+                <div class="bg-black/90 p-6 rounded-3xl border-2 border-[#00FF41] shadow-[0_0_50px_rgba(0,255,65,0.4)] text-center scale-95 animate-scale-up max-w-sm">
+                  <span class="material-symbols-outlined text-6xl text-[#00FF41] animate-bounce">verified</span>
+                  <h3 class="text-xl font-bold text-white mt-3">✓ تم العثور على المنتج</h3>
+                  <p class="text-xs text-white/50 mt-1 font-mono tracking-widest font-digital" id="flashScannedBarcode"></p>
+                </div>
+              </div>
+            </div>
+
+            <!-- PRICE EXTRACTION DECODER MODULE (3D Glass panel) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border border-white/5 p-4 rounded-2xl bg-black/40">
+              <div class="p-3 bg-white/2 rounded-xl flex flex-col justify-between">
+                <p class="text-[10px] text-white/40 uppercase tracking-widest font-bold">الباركود المستلم</p>
+                <p id="decodedBarcode" class="text-sm font-digital font-bold text-white/90 truncate mt-1">--_--_--</p>
+              </div>
+              <div class="p-3 bg-white/2 rounded-xl flex flex-col justify-between">
+                <p class="text-[10px] text-white/40 uppercase tracking-widest font-bold">سلسلة السعر المستخرجة</p>
+                <p id="decodedPriceChain" class="text-sm font-digital font-semibold text-white/45 mt-1 truncate">--_--_--</p>
+              </div>
+              <div class="p-3 bg-gradient-to-br from-[#00A94F] to-[#006C35]/50 rounded-xl flex flex-col justify-between shadow-[0_4px_15px_rgba(0,169,79,0.3)]">
+                <p class="text-[10px] text-white/90 uppercase tracking-widest font-bold">السعر النهائي المستخلص</p>
+                <div class="flex items-baseline gap-1 mt-1">
+                  <span id="decodedPriceNumber" class="text-xl md:text-2xl font-black text-white font-digital">0</span>
+                  <span class="text-[10px] font-bold text-white/80">جنيه مصري</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT SIDE: ACTIVE PRODUCT DISPLAY PANEL -->
+          <aside class="w-full lg:w-80 bg-[#0a0c0a]/75 rounded-3xl border border-white/5 flex flex-col overflow-hidden shrink-0">
+            <!-- Product image display -->
+            <div class="h-44 bg-gradient-to-br from-[#121612] to-black flex items-center justify-center p-6 relative group overflow-hidden">
+              <div id="productImgGlow" class="absolute -inset-10 bg-[#00FF41]/2 bg-radial blur-2xl group-hover:bg-[#00FF41]/5 transition-all"></div>
+              
+              <!-- Responsive Product Image -->
+              <img id="activeProductImage" src="https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=600&q=80" alt="صورة المنتج" class="h-full object-contain rounded-xl relative z-10 drop-shadow-[0_15px_15px_rgba(0,0,0,0.8)] hidden">
+              
+              <!-- Placeholder Icon when no item is active -->
+              <div id="activeProductPlaceholder" class="relative z-10 flex flex-col items-center justify-center text-white/20">
+                <span class="material-symbols-outlined text-5xl mb-1 animate-pulse">cooking</span>
+                <span class="text-[10px] text-white/40">بانتظار عملية المسح الأولى</span>
+              </div>
+            </div>
+
+            <!-- Product info details -->
+            <div class="p-6 flex-1 flex flex-col justify-between gap-6">
+              <div class="space-y-4">
+                <div class="flex justify-between items-start gap-2">
+                  <span id="activeProductCategory" class="px-2 py-0.5 bg-[#00A94F]/10 text-[#00A94F] text-[10px] font-extrabold rounded-md uppercase">المول الرئيسي</span>
+                  <span id="lastScanTime" class="text-[10px] text-white/30 font-digital">--:--:--</span>
+                </div>
+                
+                <div class="space-y-1">
+                  <h2 id="activeProductName" class="text-xl font-black text-white leading-tight">يرجى تمرير كود السلعة أمام الكاميرا</h2>
+                  <p id="activeProductDesc" class="text-xs text-white/40 leading-relaxed text-right">سيقوم النظام وبشكل فوري بمطابقة الكود لتحديد الاسم، ومن ثم معالجة الباركود لاستخراج السعر وتلاوته وتثبيته بالسجل.</p>
+                </div>
+              </div>
+
+              <!-- Arabic synthesizer stats indicator -->
+              <div class="space-y-4">
+                <div class="p-3 rounded-xl bg-white/3 border border-white/5 space-y-2">
+                  <div class="flex items-center justify-between text-[11px] text-white/60">
+                    <span class="flex items-center gap-1.5 font-bold">
+                      <span id="speechWaveDot" class="w-1.5 h-1.5 bg-[#00FF41] rounded-full"></span>
+                      الناطق الصوتي للأسعار (TTS)
+                    </span>
+                    <button onclick="announceCurrentProduct()" class="text-[10px] text-[#00A94F] font-bold hover:underline hover:text-[#00FF41] transition-all flex items-center gap-0.5">
+                      <span class="material-symbols-outlined text-[12px]">replay</span>
+                      تكرار النطق
+                    </button>
+                  </div>
+                  
+                  <!-- Volume controller slider -->
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-xs text-white/40">volume_down</span>
+                    <input id="ttsVolume" type="range" min="0" max="1" step="0.1" value="0.9" onchange="updateTTSVolume(this.value)" class="flex-1 accent-[#00A94F] h-1 bg-white/10 rounded-full cursor-pointer">
+                    <span class="material-symbols-outlined text-xs text-white/40">volume_up</span>
+                  </div>
+                </div>
+
+                <!-- Open WhatsApp direct report to manager button -->
+                <button id="btnNotifyManager" onclick="notifyManager()" class="w-full bg-[#25D366] hover:bg-[#1ebd52] active:scale-95 text-white py-3.5 rounded-2xl font-extrabold flex items-center justify-center gap-2.5 shadow-lg shadow-[#25D366]/15 transition-all text-xs cursor-pointer opacity-50 cursor-not-allowed" disabled>
+                   <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"></path></svg>
+                  <span>إرسال إفادة فورية للمدير</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <!-- SECTION 2: HISTORY LIST LOGS -->
+        <section id="tab-history" class="hidden flex-1 flex flex-col gap-4">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0a0c0a]/80 p-5 rounded-2xl border border-white/5">
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-[#00A94F]">history</span>
+                أرشيف الاستعلامات والفحوصات
+              </h2>
+              <p class="text-xs text-white/40 mt-1">سجل فوري ومؤرشف لكافة الباركودات التي تم فحصها مع استرجاع تفاصيل الأسعار والمنتج</p>
+            </div>
+            
+            <!-- History actions -->
+            <div class="flex flex-wrap gap-2">
+              <div class="relative w-full sm:w-auto">
+                <input type="text" id="historySearchInput" oninput="renderHistoryList()" placeholder="بحث باسم السلعة أو الكود..." class="w-full sm:w-64 bg-black/40 text-xs text-white border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#00FF41]">
+                <span class="material-symbols-outlined text-sm text-white/30 absolute left-3 top-3.5">search</span>
+              </div>
+              <button onclick="clearScanHistory()" class="px-4 py-2.5 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                <span class="material-symbols-outlined text-sm">delete_forever</span>
+                مسح السجل بالكامل
+              </button>
+            </div>
+          </div>
+
+          <!-- History table grid container -->
+          <div class="flex-1 bg-[#0a0c0a]/30 rounded-2xl border border-white/5 overflow-hidden">
+            <div class="min-w-full overflow-x-auto">
+              <table class="min-w-full text-right text-xs">
+                <thead>
+                  <tr class="bg-black/40 border-b border-white/5 text-white/50">
+                    <th class="p-4 font-bold">اسم المنتج</th>
+                    <th class="p-4 font-bold">الباركود</th>
+                    <th class="p-4 font-bold">سعر مستخرج</th>
+                    <th class="p-4 font-bold">التاريخ والوقت</th>
+                    <th class="p-4 font-bold text-left">خيارات</th>
+                  </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                  <!-- Dynamic rows go here -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="historyEmptyState" class="p-12 text-center text-white/20 flex flex-col items-center justify-center space-y-2">
+              <span class="material-symbols-outlined text-5xl">inventory_2</span>
+              <p class="text-sm font-bold">السجل فارغ حالياً</p>
+              <p class="text-xs text-white/40">قم بمسح بعض أكواد المنتجات لحفظها هنا تلقائياً</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: PRODUCT DATABASE & ADMIN PANEL -->
+        <section id="tab-database" class="hidden flex-1 flex flex-col gap-6">
+          <div class="bg-[#0a0c0a]/80 p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-[#00A94F]">admin_panel_settings</span>
+                لوحة تحكم مدير الفرع (التحكم بالمنتجات)
+              </h2>
+              <p class="text-xs text-white/40 mt-1">إضافة، تعديل أو حذف المنتجات يدوياً وإتاحة تصدير أو استيراد قاعدة البيانات الاحتياطية</p>
+            </div>
+
+            <!-- Lock Toggle badge -->
+            <button id="adminLockBadge" onclick="toggleAdminAuth()" class="bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-500/30 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all">
+              <span class="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping" id="adminLockDot"></span>
+              <span class="material-symbols-outlined text-xs" id="adminLockIcon">lock</span>
+              <span id="adminLockText">مغلق - يرجى تسجيل الدخول</span>
+            </button>
+          </div>
+
+          <!-- UNLOCKED VIEW: FULL CRUD & JSON IMPORT EXPORT -->
+          <div id="adminPanelContent" class="hidden grid grid-cols-1 xl:grid-cols-3 gap-6">
+            
+            <!-- LEFT PANEL: ADD / EDIT PRODUCT FORM -->
+            <div class="bg-[#0a0c0a]/70 rounded-2xl border border-white/5 p-6 space-y-4">
+              <h3 class="text-sm font-bold text-[#00A94F] flex items-center gap-2">
+                <span class="material-symbols-outlined text-xs">edit_square</span>
+                <span id="formTitle">إضافة منتج جديد لقاعدة البيانات</span>
+              </h3>
+              
+              <!-- Hidden product ID when editing -->
+              <input type="hidden" id="editProductIndex" value="">
+
+              <div class="space-y-3 text-xs">
+                <div class="space-y-1.5">
+                  <label class="text-white/60">اسم السلعة / المنتج (بالعربية)</label>
+                  <input type="text" id="prodNameInput" placeholder="أدخل اسم غني بالوصف، مثلاً: طاسة كريب 36" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#00FF41]">
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-white/60">الباركود الشامل للسلعة (يشمل رمز الـ * والسعر المدمج)</label>
+                  <div class="flex gap-2">
+                    <input type="text" id="prodBarcodeInput" placeholder="مثل: 5359*1165006" class="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white font-digital tracking-wider leading-6 focus:outline-none focus:border-[#00FF41]">
+                    <button onclick="generateRandomBarcodeForPricing()" class="px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white transition-all text-[11px] font-semibold" title="توليد باركود تلقائي">توليد</button>
+                  </div>
+                  <p class="text-[10px] text-white/40 mt-1">يرجى كتابة باركود يحتوي على نجمة * والنسبة السعيرية ليقوم النظام باستخلاص سعرها تلقائياً.</p>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-white/60">التصنيف الرئيسي</label>
+                  <select id="prodCategorySelect" class="w-full bg-[#0a0c0a] text-[#e0e0e0] border border-white/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#00FF41]">
+                    <option value="أواني الطهي">أواني الطهي</option>
+                    <option value="أجهزة منزلية">أجهزة منزلية</option>
+                    <option value="أدوات تقديم">أدوات تقديم</option>
+                    <option value="منظفات وعناية">منظفات وعناية</option>
+                    <option value="كماليات المطبخ">كماليات المطبخ</option>
+                  </select>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-white/60">رابط صورة المنتج (Unsplash أو رابط خارجي)</label>
+                  <input type="text" id="prodImageInput" placeholder="https://images.unsplash.com/..." class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#00FF41]">
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-white/60">وصف موجز للمنتج</label>
+                  <textarea id="prodDescInput" rows="2" placeholder="وصف الجودة، بلد المنشأ، أو خصائص السلعة..." class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#00FF41]"></textarea>
+                </div>
+
+                <!-- Submit and cancel actions -->
+                <div class="pt-2 flex gap-2">
+                  <button id="btnSaveProduct" onclick="saveProductForm()" class="flex-1 bg-[#00A94F] hover:bg-[#00FF41] text-black font-extrabold py-3 rounded-xl shadow-lg shadow-[#00A94F]/20 transition-all cursor-pointer">
+                    حفظ المنتج
+                  </button>
+                  <button id="btnCancelEdit" onclick="cancelProductEdit()" class="hidden px-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-xl transition-all">
+                    إلغاء التعديل
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT PANEL: MANAGE PRODUCTS & DUMP JSON -->
+            <div class="xl:col-span-2 flex flex-col gap-6">
+              
+              <!-- SEARCH AND EXPORT DATABASE UTILITIES -->
+              <div class="bg-[#0a0c0a]/70 p-5 rounded-2xl border border-white/5 space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div class="relative w-full md:w-auto">
+                    <input type="text" id="dbSearchInput" oninput="renderDatabaseProducts()" placeholder="بحث سريع بقاعدة المنتجات المحلية..." class="w-full md:w-64 bg-black/40 text-xs text-white border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#00FF41]">
+                    <span class="material-symbols-outlined text-xs text-white/30 absolute left-3 top-3.5">search</span>
+                  </div>
+
+                  <!-- Utility import/export buttons -->
+                  <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                    <button onclick="exportDatabaseJSON()" class="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer">
+                      <span class="material-symbols-outlined text-sm">download</span>
+                      تصدير JSON
+                    </button>
+                    
+                    <label class="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer">
+                      <span class="material-symbols-outlined text-sm">upload</span>
+                      استيراد JSON
+                      <input type="file" id="importFileInput" onchange="importDatabaseJSON(event)" class="hidden" accept=".json">
+                    </label>
+
+                    <button onclick="resetToInitialDatabase()" class="px-3.5 py-2.5 bg-[#006C35]/30 hover:bg-[#006C35]/50 border border-[#00A94F]/40 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer" title="استعادة المنتجات السبع الأصلية">
+                      <span class="material-symbols-outlined text-sm">restart_alt</span>
+                      تهيئة المصنع
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DATABASE PRODUCTS GRID TABLE -->
+              <div class="flex-1 bg-[#0a0c0a]/40 rounded-2xl border border-white/5 overflow-hidden">
+                <div class="min-w-full overflow-x-auto max-h-[350px] overflow-y-auto">
+                  <table class="min-w-full text-right text-xs">
+                    <thead class="bg-black/60 sticky top-0 z-10 border-b border-white/5 text-white/40">
+                      <tr>
+                        <th class="p-4 font-bold">صورة ملخصة</th>
+                        <th class="p-4 font-bold">اسم المنتج</th>
+                        <th class="p-4 font-bold">الباركود</th>
+                        <th class="p-4 font-bold">التصنيف الرئيسي</th>
+                        <th class="p-4 font-bold">سعر مستنتج</th>
+                        <th class="p-4 font-bold text-left">التحكم</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dbProductsTableBody">
+                      <!-- Dynamic db items rendering -->
+                    </tbody>
+                  </table>
+                  
+                  <div id="dbProductsEmptyState" class="hidden p-8 text-center text-white/25 flex flex-col items-center justify-center space-y-2">
+                    <span class="material-symbols-outlined text-4xl">dns</span>
+                    <p class="text-sm font-bold">لم نجد أي منتج مطابق لبحثك حالياً</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LOCKED AUTH SCREEN -->
+          <div id="adminLockedPrompt" class="flex-1 flex flex-col items-center justify-center py-12 px-4 transition-all duration-500">
+            <div class="bg-[#0a0c0a]/80 max-w-sm w-full p-8 rounded-3xl border border-white/10 text-center space-y-6 shadow-2xl relative overflow-hidden">
+              <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#00FF41] to-transparent"></div>
+              
+              <div class="w-16 h-16 bg-white/2 rounded-2xl flex items-center justify-center mx-auto border border-white/10 shadow-lg">
+                <span class="material-symbols-outlined text-red-400 text-3xl">lock_open</span>
+              </div>
+
+              <div class="space-y-1">
+                <h3 class="text-lg font-bold text-white">رمز إذن الدخول والتحكم بالمنتجات</h3>
+                <p class="text-xs text-white/40">يرجى تسجيل الدخول للحصول على امتياز تعديل قاعدة البيانات</p>
+              </div>
+
+              <!-- Simulated PIN unlock input -->
+              <div class="space-y-4">
+                <div class="flex gap-2 justify-center" id="pinDisplayContainer">
+                  <input type="password" id="adminPasswordInput" placeholder="أدخل كلمة مرور المسؤول" class="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-center text-white font-digital text-lg tracking-widest focus:outline-none focus:border-[#00FF41] focus:ring-1 focus:ring-[#00FF41]">
+                </div>
+
+                <div class="text-[10px] text-white/30 text-center">كلمة السر الافتراضية للكاشير بمول السعودية للمنزلية هي: <span class="font-bold text-[#00FF41]/80">admin</span></div>
+
+                <button onclick="submitAdminPassword()" class="w-full bg-[#00A94F] hover:bg-[#00FF41] text-black font-extrabold py-3 px-4 rounded-xl shadow-lg shadow-[#00A94F]/20 transition-all text-xs cursor-pointer">
+                  تأكيد كلمة المرور والتحقق
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 4: DETAILED STATISTICS & ANALYTICS DASHBOARD -->
+        <section id="tab-dashboard" class="hidden flex-1 flex flex-col gap-6">
+          <!-- Live metrics dashboard top bar -->
+          <div class="bg-[#0a0c0a]/85 p-5 rounded-2xl border border-white/5">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <span class="material-symbols-outlined text-[#00A94F]">query_stats</span>
+              غرفة المبيعات والإحصاءات المتقدمة
+            </h2>
+            <p class="text-xs text-white/40 mt-1">عرض محدث فورياً لحركة الاستعلامات المسجلة اليوم وتدفقات الفحص</p>
+          </div>
+
+          <!-- BENTO STATS CARDS -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- STAT 1: TOTAL SCANS -->
+            <div class="p-5 rounded-2xl bg-black border border-white/5 space-y-3 relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-[#00A94F]/5 rounded-full blur-xl group-hover:bg-[#00FF41]/5 transition-all"></div>
+              <div class="flex justify-between items-center text-white/40">
+                <span class="text-xs font-bold">إجمالي الفحوصات بالأرشيف</span>
+                <span class="material-symbols-outlined text-lg">barcode</span>
+              </div>
+              <div class="space-y-1">
+                <p id="statTotalScans" class="text-3xl font-black text-white font-digital glow-text-green">0</p>
+                <p class="text-[10px] text-white/30">عمليات التثبيت بسجل الكاشير الرئيسي</p>
+              </div>
+            </div>
+
+            <!-- STAT 2: TODAY SCANS -->
+            <div class="p-5 rounded-2xl bg-black border border-white/5 space-y-3 relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-[#00A94F]/5 rounded-full blur-xl group-hover:bg-[#00FF41]/5 transition-all"></div>
+              <div class="flex justify-between items-center text-white/40">
+                <span class="text-xs font-bold">استعلامات اليوم الثابتة</span>
+                <span class="material-symbols-outlined text-lg">today</span>
+              </div>
+              <div class="space-y-1">
+                <p id="statTodayScans" class="text-3xl font-black text-white font-digital text-[#00A94F]">0</p>
+                <p class="text-[10px] text-white/30">معدل الفحص خلال الـ 24 ساعة الماضية</p>
+              </div>
+            </div>
+
+            <!-- STAT 3: AVERAGE PRICES -->
+            <div class="p-5 rounded-2xl bg-black border border-white/5 space-y-3 relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-yellow-500/5 rounded-full blur-xl transition-all"></div>
+              <div class="flex justify-between items-center text-white/40">
+                <span class="text-xs font-bold">متوسط القيمة المالية للسلع</span>
+                <span class="material-symbols-outlined text-lg">payments</span>
+              </div>
+              <div class="space-y-1">
+                <div class="flex items-baseline gap-1">
+                  <p id="statAveragePrice" class="text-3xl font-black text-white font-digital glow-text-gold">0</p>
+                  <p class="text-[10px] font-bold text-white/45">ج.م</p>
+                </div>
+                <p class="text-[10px] text-white/30">قيمة السلع المفحوصة في اليوم الحالي</p>
+              </div>
+            </div>
+
+            <!-- STAT 4: TOP PERFORMING CATEGORY -->
+            <div class="p-5 rounded-2xl bg-black border border-white/5 space-y-3 relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-[#00A94F]/5 rounded-full blur-xl group-hover:bg-[#00FF41]/5 transition-all"></div>
+              <div class="flex justify-between items-center text-white/40">
+                <span class="text-xs font-bold">الفئة الأكثر طلباً</span>
+                <span class="material-symbols-outlined text-lg">grid_view</span>
+              </div>
+              <div class="space-y-1">
+                <p id="statTopCategory" class="text-xl font-black text-white truncate py-1">لا يوجد</p>
+                <p class="text-[10px] text-white/30">التصنيف الأعلى تكراراً بعمليات الباركود</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- DETAILED CHARTS & GRAPHICAL ANALYTICS -->
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            
+            <!-- RECENT VALUE RATIO DISPATCH -->
+            <div class="bg-[#0a0c0a]/80 p-6 rounded-2xl border border-white/5 space-y-4">
+              <h3 class="text-sm font-bold text-white">توزيع فئات الاستعلام الشائعة</h3>
+              
+              <div class="space-y-4 pt-2">
+                <!-- Cookware progress -->
+                <div class="space-y-1">
+                  <div class="flex justify-between text-xs">
+                    <span class="text-white/60">أواني الطهي والتقديم</span>
+                    <span id="ratioCookwarePercent" class="font-digital text-white font-bold">0%</span>
+                  </div>
+                  <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                    <div id="ratioCookwareBar" class="bg-[#00A94F] h-full w-0 transition-all duration-700"></div>
+                  </div>
+                </div>
+
+                <!-- Appliances progress -->
+                <div class="space-y-1">
+                  <div class="flex justify-between text-xs">
+                    <span class="text-white/60">الأجهزة المنزلية الذكية</span>
+                    <span id="ratioAppliancesPercent" class="font-digital text-white font-bold">0%</span>
+                  </div>
+                  <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                    <div id="ratioAppliancesBar" class="bg-blue-500 h-full w-0 transition-all duration-700"></div>
+                  </div>
+                </div>
+
+                <!-- Kitchen Accessories progress -->
+                <div class="space-y-1">
+                  <div class="flex justify-between text-xs">
+                    <span class="text-white/60">كماليات ومستلزمات المطبخ الأخرى</span>
+                    <span id="ratioKitchenPercent" class="font-digital text-white font-bold">0%</span>
+                  </div>
+                  <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                    <div id="ratioKitchenBar" class="bg-amber-500 h-full w-0 transition-all duration-700"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- DIGITAL LIVE FEED SUMMARY LOG -->
+            <div class="xl:col-span-2 bg-[#0a0c0a]/80 p-6 rounded-2xl border border-white/5 flex flex-col gap-4">
+              <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span class="material-symbols-outlined text-xs text-[#00A94F]">feed</span>
+                  آخر الأنشطة والتدفق الكاشيري المباشر
+                </h3>
+                <span class="text-[10px] text-white/30 tracking-widest font-digital">UPSTREAM LOGS LIVE</span>
+              </div>
+
+              <!-- Terminal style scrolling activity log -->
+              <div class="flex-1 min-h-[200px] bg-black/50 p-4 rounded-xl border border-white/5 font-mono text-xs text-[#00FF41]/80 space-y-2 h-[220px] overflow-y-auto" id="dashboardLiveLogs">
+                <div>[06-06 20:36] نظام التحليل جاهز ومستمع لمجرى أكواد الكاشير...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- MAIN FOOTER INFO -->
+    <footer class="h-auto lg:h-14 bg-[#0a0c0a]/90 border-t border-white/5 px-4 lg:px-8 py-3 lg:py-0 flex flex-col lg:flex-row items-center justify-between text-xs text-white/35 shrink-0 gap-2 lg:gap-0">
+      <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 lg:gap-6 text-center">
+        <span>المسؤول والمدير المعتمد: <span class="text-[#00A94F] font-bold">الحاج إسماعيل صلاح</span></span>
+        <span class="hidden md:inline text-white/10">|</span>
+        <span>رقم التواصل: <a href="tel:01101362148" class="text-white/60 hover:text-[#00FF41] font-digital">01101362148</a></span>
+      </div>
+      
+      <div class="flex flex-wrap items-center justify-center lg:justify-end gap-3 lg:gap-4 text-center">
+        <span>تم تطوير النظام بواسطة: <a href="https://ama309825.github.io/Portfolio-anas/" target="_blank" rel="noopener noreferrer" class="text-[#00A94F] font-bold hover:underline">المبرمج أنس حورس</a></span>
+        <span class="text-white/10">|</span>
+        <span>الدعم التقني: <a href="tel:01558364953" class="text-white/60 hover:text-white font-digital">01558364953</a></span>
+        <span class="hidden lg:inline text-white/10">|</span>
+        <span class="text-[10px] opacity-70">حقوق النشر والطبع محفوظة © 2026</span>
+      </div>
+    </footer>
+
+    <!-- SUCCESS SOUND CHIME TRIGGER (Embedded dynamic synthesized audio setup) -->
+    <script>
+      // Web Audio API beep success generator so we don't depend on missing assets!
+      function playScanSuccessChime() {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          const ctx = new AudioContext();
+          
+          // First soft beep
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          
+          osc1.type = "sine";
+          osc1.frequency.setValueAtTime(880, ctx.currentTime); // High pitch A5
+          gain1.gain.setValueAtTime(0.12, ctx.currentTime);
+          gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+          
+          osc1.start();
+          osc1.stop(ctx.currentTime + 0.15);
+
+          // Second higher pleasant chime beep after 0.08s
+          setTimeout(() => {
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            
+            osc2.type = "sine";
+            osc2.frequency.setValueAtTime(1200, ctx.currentTime); // High pleasant G6
+            gain2.gain.setValueAtTime(0.12, ctx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+            
+            osc2.start();
+            osc2.stop(ctx.currentTime + 0.20);
+          }, 80);
+
+        } catch (e) {
+          console.worn("Web Audio not allowed or failed:", e);
+        }
+      }
+    </script>
+
+    <!-- ARABIC NUMBER TO WORD SYNTHESIZER UTILITIES -->
+    <script>
+      // Translates Arabic numbers dynamically to Arabic verbal output
+      function arabicNumberToWords(num) {
+        if (num === 0) return "صفر";
+        const ones = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة"];
+        const teens = ["عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"];
+        const tens = ["", "عشرة", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
+        const hundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
+        
+        function convertLessThanThousand(n) {
+          if (n === 0) return "";
+          let res = "";
+          const h = Math.floor(n / 100);
+          const remainder = n % 100;
+          
+          if (h > 0) {
+            res += hundreds[h];
+          }
+          
+          if (remainder > 0) {
+            if (res !== "") res += " و ";
+            if (remainder <= 10) {
+              res += ones[remainder];
+            } else if (remainder < 20) {
+              res += teens[remainder - 10];
+            } else {
+              const t = Math.floor(remainder / 10);
+              const o = remainder % 10;
+              if (o > 0) {
+                res += ones[o] + " و " + tens[t];
+              } else {
+                res += tens[t];
+              }
+            }
+          }
+          return res;
+        }
+        
+        let result = "";
+        let thousand = Math.floor(num / 1000) % 1000;
+        let million = Math.floor(num / 1000000) % 1000;
+        let remainder = num % 1000;
+        
+        if (million > 0) {
+          if (million === 1) result += "مليون";
+          else if (million === 2) result += "مليونان";
+          else if (million <= 10) result += convertLessThanThousand(million) + " ملايين";
+          else result += convertLessThanThousand(million) + " مليون";
+        }
+        
+        if (thousand > 0) {
+          if (result !== "") result += " و ";
+          if (thousand === 1) result += "ألف";
+          else if (thousand === 2) result += "ألفان";
+          else if (thousand <= 10) result += convertLessThanThousand(thousand) + " آلاف";
+          else result += convertLessThanThousand(thousand) + " ألف";
+        }
+        
+        if (remainder > 0) {
+          if (result !== "") result += " و ";
+          result += convertLessThanThousand(remainder);
+        }
+        
+        return result.trim();
+      }
+    </script>
+
+    <!-- CORE SYSTEM SCRIPT AND BUSINESS LOGIC (No external frameworks needed) -->
+    <script>
+      // PRODUCT PRELOAD DATABASE (Local cache structure)
+      const initialProducts = [
+        {
+          name: "طاسة كريب جرانيت 36سم",
+          barcode: "5359*1165006",
+          category: "أواني الطهي",
+          image: "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=600&q=80",
+          description: "طاسة كريب فائقة الجودة بتصميم فريد ومقبض عازل ومريح لليد ومقاومة تامة للالتصاق ومناسبة للطهي عالي الحرارة."
+        },
+        {
+          name: "طقم حلل جرانيت تركي 10قطع",
+          barcode: "5359*111200006",
+          category: "أواني الطهي",
+          image: "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=600&q=80",
+          description: "طقم حلل جرانيت تركي فاخر أصلي، يتألف من 10 قطع مختلفة الأحجام مع أغطية زجاجية معززة لتبديد ومنع الحرارة الزائدة."
+        },
+        {
+          name: "خلاط كينوود بليند إكس برو بمطحنة",
+          barcode: "5359*11220006",
+          category: "أجهزة منزلية",
+          image: "https://images.unsplash.com/photo-1578643463396-0997cb5328c1?auto=format&fit=crop&w=600&q=80",
+          description: "خلاط كينوود بقوة 1200 واط مع مطحنتين وسكاكين حادة مقاومة للصدأ وسرعات نبضية متعددة لتحضير العصائر الفورية وتكسير الثلج."
+        },
+        {
+          name: "غلاية مياه دبل وول ستانلس",
+          barcode: "5359*1145006",
+          category: "أجهزة منزلية",
+          image: "https://images.unsplash.com/photo-1594222080004-de159040db3d?auto=format&fit=crop&w=600&q=80",
+          description: "غلاية مياه كهربائية بجدار مزدوج يحافظ على بقاء السخونة وتصميم داخلي من الستانلس ستيل الصحي كلياً مع مستشعر أمان الإيقاف التلقائي."
+        },
+        {
+          name: "طقم عشاء لومينارك فرنسي 46قطعة",
+          barcode: "5359*11350006",
+          category: "أدوات تقديم",
+          image: "https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=600&q=80",
+          description: "أرقى أطقم لومينارك المزودة بزجاج هيدروال متين ومقاوم للكسر والصدمات بـ 46 قطعة بتشكيل راقي لتقديم الطعام والمشروبات بالضيافة الفخمة."
+        },
+        {
+          name: "عجان هوميكس إحترافي 7لتر",
+          barcode: "5359*11500006",
+          category: "أجهزة منزلية",
+          image: "https://images.unsplash.com/photo-1574269909862-7e1d70bb8078?auto=format&fit=crop&w=600&q=80",
+          description: "عجانة هوميكس الكبيرة بمحرك جبار 1500 واط ووعاء ستانلس متين لخلط وعحن وتحضير المعجنات والمخبوزات والمطابح الكبرى."
+        },
+        {
+          name: "مكواة بخار تيفال الذكية",
+          barcode: "5359*1185006",
+          category: "أجهزة منزلية",
+          image: "https://images.unsplash.com/photo-1517677129300-27b1a7888553?auto=format&fit=crop&w=600&q=80",
+          description: "مكواة تيفال بالبخار لسهولة كي الأقمشة والجينز بفضل نظام منع التقطير وقاعدة السيراميك التيفال ناعمة الحركة مع ضخ بخار مستمر."
+        }
+      ];
+
+      // STATE PROPERTIES
+      let dbProducts = [];
+      let scanHistory = [];
+      let currentActiveProduct = null;
+      let html5QrScanner = null;
+      let isCameraActive = false;
+      let isFlashOn = false;
+      let ttsVolume = 0.9;
+      let isAdminAuthenticated = false;
+
+      // INITIALIZE BOOT SEQUENCE
+      document.addEventListener("DOMContentLoaded", () => {
+        initBootSequence();
+        initInteractiveCanvas();
+        initClock();
+      });
+
+      // SYSTEM BOOT SEQUENCE
+      function initBootSequence() {
+        const lines = [
+          "&gt; جاري اختبار منافذ العتاد والكامير...",
+          "&gt; ربط اتصال الكاشير الآمن ببروتوكول SSL...",
+          "&gt; تحميل قاعدة بيانات المنتجات الرئيسية لمول السعودية...",
+          "&gt; تهيئة محرك التخزين المحلي LocalStorage...",
+          "&gt; تحميل واجهة الكاشير المتموجة Saudi Green Enterprise...",
+          "&gt; فحص محرك النطق العربي للأسعار SpeechSynthesis...",
+          "&gt; النظام جاهز تماماً للاستخدام بنجاح."
+        ];
+        
+        const terminal = document.getElementById("bootTerminal");
+        const progressBar = document.getElementById("bootProgress");
+        const percentText = document.getElementById("bootPercent");
+        const loadingScreen = document.getElementById("loadingScreen");
+        
+        let progress = 0;
+        let lineIndex = 0;
+
+        const interval = setInterval(() => {
+          progress += Math.floor(Math.random() * 5) + 3;
+          if (progress > 100) progress = 100;
+          
+          progressBar.style.width = progress + "%";
+          percentText.textContent = progress + "%";
+
+          if (progress % 15 === 0 || progress === 100) {
+            if (lineIndex < lines.length) {
+              const div = document.createElement("div");
+              div.innerHTML = lines[lineIndex];
+              terminal.appendChild(div);
+              terminal.scrollTop = terminal.scrollHeight;
+              lineIndex++;
+            }
+          }
+
+          if (progress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              loadingScreen.classList.add("opacity-0");
+              setTimeout(() => {
+                loadingScreen.style.display = "none";
+                // Boot complete
+                loadAllLocalData();
+                triggerVoiceWelcome();
+              }, 700);
+            }, 500);
+          }
+        }, 80);
+      }
+
+      // VOICE WELCOME GREETING
+      function triggerVoiceWelcome() {
+        if ('speechSynthesis' in window) {
+          const introMsg = "أهلاً ومرحباً بكم في نظام كاشير وأدوات استعلام مول السعودية الفخمة. جاري الإعداد والاستماع.";
+          speakArabicText(introMsg);
+        }
+      }
+
+      // LOAD ALL LOCAL DATA FROM STORAGE Or Set Initial
+      function loadAllLocalData() {
+        // Load db
+        const storedDb = localStorage.getItem("sm_pos_db");
+        if (storedDb) {
+          dbProducts = JSON.parse(storedDb);
+        } else {
+          dbProducts = [...initialProducts];
+          localStorage.setItem("sm_pos_db", JSON.stringify(dbProducts));
+        }
+
+        // Load history
+        const storedHistory = localStorage.getItem("sm_pos_history");
+        if (storedHistory) {
+          scanHistory = JSON.parse(storedHistory);
+        } else {
+          scanHistory = [];
+        }
+
+        // Render DB and components
+        renderDatabaseProducts();
+        renderHistoryList();
+        updateDashboardAndSidebarStats();
+      }
+
+      // CLOCK REAL TIME TICK
+      function initClock() {
+        setInterval(() => {
+          const now = new Date();
+          const clockStr = now.getFullYear() + "/" + 
+            String(now.getMonth() + 1).padStart(2, '0') + "/" + 
+            String(now.getDate()).padStart(2, '0') + " " + 
+            String(now.getHours()).padStart(2, '0') + ":" + 
+            String(now.getMinutes()).padStart(2, '0') + ":" + 
+            String(now.getSeconds()).padStart(2, '0');
+          document.getElementById("headerClock").textContent = clockStr;
+        }, 1000);
+      }
+
+      // REACTIVE DIGITAL GRID BACKGROUND
+      function initInteractiveCanvas() {
+        const canvas = document.getElementById("digitalBackground");
+        const ctx = canvas.getContext("2d");
+        
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener("resize", () => {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+        });
+
+        const particles = [];
+        for (let i = 0; i < 40; i++) {
+          particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            radius: Math.random() * 2 + 1,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: (Math.random() - 0.5) * 0.3,
+            alpha: Math.random() * 0.5 + 0.2
+          });
+        }
+
+        function animate() {
+          ctx.clearRect(0, 0, width, height);
+          
+          // Draw Digital Grid
+          ctx.strokeStyle = "rgba(0, 108, 53, 0.05)";
+          ctx.lineWidth = 1;
+          const gridSize = 60;
+          for (let x = 0; x < width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+          }
+          for (let y = 0; y < height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+          }
+
+          // Draw floating nodes & light trails
+          particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.x < 0 || p.x > width) p.vx *= -1;
+            if (p.y < 0 || p.y > height) p.vy *= -1;
+
+            ctx.fillStyle = `rgba(0, 255, 65, ${p.alpha})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // connection cords
+            particles.forEach(other => {
+              const dist = Math.hypot(p.x - other.x, p.y - other.y);
+              if (dist < 150) {
+                ctx.strokeStyle = `rgba(0, 169, 79, ${(1 - dist/150) * 0.05})`;
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(other.x, other.y);
+                ctx.stroke();
+              }
+            });
+          });
+
+          requestAnimationFrame(animate);
+        }
+        animate();
+      }
+
+      // TAB NAVIGATION ROUTER SWITCHER
+      function switchTab(tabId) {
+        // Toggle active sections
+        document.querySelectorAll("main > section").forEach(section => {
+          section.classList.add("hidden");
+        });
+        document.getElementById("tab-" + tabId).classList.remove("hidden");
+
+        // Toggle nav buttons
+        document.querySelectorAll(".tab-button").forEach(btn => {
+          btn.classList.add("text-white/60", "border-transparent");
+          btn.classList.remove("bg-[#006C35]/25", "border-[#00A94F]/50", "text-white");
+        });
+
+        let targetBtn = "btnScanner";
+        if (tabId === "history") targetBtn = "btnHistory";
+        if (tabId === "database") targetBtn = "btnDatabase";
+        if (tabId === "dashboard") targetBtn = "btnDashboard";
+
+        const actBtn = document.getElementById(targetBtn);
+        actBtn.classList.remove("text-white/60", "border-transparent");
+        actBtn.classList.add("bg-[#006C35]/25", "border-[#00A94F]/50", "text-white");
+
+        // Shut down camera scanner if navigating away from Scanner to save power & resource leak
+        if (tabId !== "scanner" && isCameraActive) {
+          toggleCamera(false);
+        }
+      }
+
+      // BARCODE PRICE EXTRACTION ENGINE
+      // Decodes following rule:
+      // Split on '*' -> Take part after '*' -> Chop first 2 and last 2 characters -> Remaining is price!
+      function extractPrice(barcode) {
+        try {
+          if (!barcode || !barcode.includes("*")) return 0;
+          const afterStar = barcode.split('*')[1];
+          if (afterStar.length <= 4) return 0;
+          return Number(afterStar.slice(2, -2));
+        } catch (e) {
+          console.error("Error extracting pricing structure from barcode code:", barcode, e);
+          return 0;
+        }
+      }
+
+      // NATIVE ARABIC TTS CHATTER
+      function speakArabicText(text) {
+        if (!('speechSynthesis' in window)) return;
+        
+        // Cancel first to clear speech stack and preserve speed
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "ar-SA";
+        utterance.rate = 0.85; // Natural speed cadence
+        utterance.volume = ttsVolume;
+
+        // Try selecting Egypt or Saudi voice if loaded
+        const voices = window.speechSynthesis.getVoices();
+        const arabicVoice = voices.find(v => v.lang.startsWith("ar"));
+        if (arabicVoice) {
+          utterance.voice = arabicVoice;
+        }
+
+        // Pulsing wave light indicator animation
+        const pulseObj = document.getElementById("speechWaveDot");
+        utterance.onstart = () => {
+          pulseObj.classList.add("animate-ping");
+          pulseObj.classList.remove("bg-[#00FF41]");
+          pulseObj.classList.add("bg-amber-400");
+        };
+        utterance.onend = () => {
+          pulseObj.classList.remove("animate-ping");
+          pulseObj.classList.remove("bg-amber-400");
+          pulseObj.classList.add("bg-[#00FF41]");
+        };
+
+        window.speechSynthesis.speak(utterance);
+      }
+
+      // HOW TO DEPLOY LIVE CAMERA SCANNING MECHANICS
+      function toggleCamera(forceState) {
+        const nextState = forceState !== undefined ? forceState : !isCameraActive;
+        const btnText = document.getElementById("btnToggleCameraText");
+        const placeholder = document.getElementById("cameraPlaceholder");
+        const laser = document.getElementById("scannerLaser");
+
+        if (nextState) {
+          // ACTIVATE CAMERA SCANNER
+          placeholder.classList.add("translate-y-[-100%]", "opacity-0");
+          setTimeout(() => { placeholder.style.display = "none"; }, 500);
+          laser.classList.remove("hidden");
+
+          html5QrScanner = new Html5Qrcode("reader");
+          
+          const config = {
+            fps: 15,
+            qrbox: { width: 280, height: 180 },
+            aspectRatio: 1.0
+          };
+
+          html5QrScanner.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+              // ON SCAN SUCCESS
+              handleScannedCode(decodedText);
+            },
+            (error) => {
+              // silent watch errors
+            }
+          ).then(() => {
+            isCameraActive = true;
+            btnText.textContent = "إيقاف الكاميرا";
+          }).catch(err => {
+            console.error("Camera start failure:", err);
+            isCameraActive = false;
+            btnText.textContent = "تشغيل الكاميرا";
+            placeholder.style.display = "flex";
+            placeholder.classList.remove("translate-y-[-100%]", "opacity-0");
+            laser.classList.add("hidden");
+            alert("فشل تشغيل الكاميرا. يرجى إعطاء صلاحيات الكاميرا للمتصفح.");
+          });
+
+        } else {
+          // SHUT DOWN CAMERA SCANNER
+          if (html5QrScanner) {
+            html5QrScanner.stop().then(() => {
+              isCameraActive = false;
+              isFlashOn = false;
+              btnText.textContent = "تشغيل الكاميرا";
+              placeholder.style.display = "flex";
+              setTimeout(() => {
+                placeholder.classList.remove("translate-y-[-100%]", "opacity-0");
+              }, 50);
+              laser.classList.add("hidden");
+            }).catch(e => {
+              console.error("Failed to stop scanner cleanly.", e);
+            });
+          } else {
+            isCameraActive = false;
+            btnText.textContent = "تشغيل الكاميرا";
+            placeholder.style.display = "flex";
+            placeholder.classList.remove("translate-y-[-100%]", "opacity-0");
+            laser.classList.add("hidden");
+          }
+        }
+      }
+
+      // FLASHLIGHT TOGGLE (Through camera hardware)
+      function toggleFlash() {
+        if (!isCameraActive || !html5QrScanner) {
+          alert("الرجاء تشغيل الكاميرا أولاً لتفعيل كشاف الإنارة.");
+          return;
+        }
+
+        try {
+          // Standard track constraint controller
+          const track = html5QrScanner.getRunningTrack();
+          if (track && track.getCapabilities().torch) {
+            isFlashOn = !isFlashOn;
+            track.applyConstraints({
+              advanced: [{ torch: isFlashOn }]
+            });
+          } else {
+            alert("الكشاف غير مدعوم على هذه الكاميرا أو المتصفح.");
+          }
+        } catch (e) {
+          console.error("Flash toggling error:", e);
+        }
+      }
+
+      // MULTI-SOURCE barcode processing handles dynamic inputs (real scans/simulations)
+      function handleScannedCode(barcode) {
+        if (!barcode) return;
+        
+        // Auto trim content
+        barcode = barcode.trim();
+        
+        // Extracted Price
+        const price = extractPrice(barcode);
+        
+        // Find if product exists in database matching barcode
+        let matchedProduct = dbProducts.find(p => p.barcode === barcode);
+
+        // If not in database, dynamically create a fallback item for the cashier flow
+        if (!matchedProduct) {
+          matchedProduct = {
+            name: "سلعة مستعلم عنها جديدة",
+            barcode: barcode,
+            category: "قسم الاستكشاف الفوري",
+            image: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80",
+            description: "منتج استثنائي غير مسجل مسبقاً. تم التعرف على تصنيفه واستخراج قيمته النقدية بسلاسة تامة عبر ذكاء النظام البصري."
+          };
+        }
+
+        // Trigger gorgeous animations and beeps
+        playScanSuccessChime();
+        triggerSuccessScanOverlays(barcode);
+
+        // Update product showcase component
+        updateProductShowcase(matchedProduct, price);
+
+        // Announce details in loud elegant Arabic Voice (TTS)
+        announceProductDetails(matchedProduct.name, price);
+
+        // Append to local Database history logs
+        saveToScanHistory(matchedProduct, price);
+      }
+
+      // SIMULATE SCAN EVENT
+      function simulateScan(barcode) {
+        handleScannedCode(barcode);
+      }
+
+      // FLASH SUCCESS FLASH OVERLAYS
+      function triggerSuccessScanOverlays(barcode) {
+        const overlay = document.getElementById("successFlash");
+        const barcodeLabel = document.getElementById("flashScannedBarcode");
+        
+        barcodeLabel.textContent = barcode;
+        overlay.classList.remove("hidden");
+        overlay.classList.add("flex");
+
+        setTimeout(() => {
+          overlay.classList.remove("flex");
+          overlay.classList.add("hidden");
+        }, 1200);
+      }
+
+      // SHOW DISK SCAN INPUT PROMPT Manually
+      function showCustomBarcodePrompt() {
+        const manualCode = prompt("برجاء إدخال كود باركود السلعة يدوياً (مثال: 5359*1165006):");
+        if (manualCode) {
+          handleScannedCode(manualCode);
+        }
+      }
+
+      // UPDATE SHOWCASE PANEL DETAILS
+      function updateProductShowcase(product, price) {
+        currentActiveProduct = { ...product, extractedPrice: price };
+
+        // Hide Placholder, show Image
+        document.getElementById("activeProductPlaceholder").style.display = "none";
+        const img = document.getElementById("activeProductImage");
+        img.src = product.image || "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=300&q=80";
+        img.classList.remove("hidden");
+
+        // Set Texts
+        document.getElementById("activeProductName").textContent = product.name;
+        document.getElementById("activeProductDesc").textContent = product.description;
+        document.getElementById("activeProductCategory").textContent = product.category;
+        
+        // Decoded HUD values
+        document.getElementById("decodedBarcode").textContent = product.barcode;
+        
+        // Break barcode text down visualizer style
+        const afterStar = product.barcode.includes('*') ? product.barcode.split('*')[1] : '';
+        if (afterStar.length > 4) {
+          const l2 = afterStar.slice(0, 2);
+          const rem = afterStar.slice(2, -2);
+          const r2 = afterStar.slice(-2);
+          document.getElementById("decodedPriceChain").innerHTML = `${l2}<span class="text-[#00FF41] font-extrabold underline">${rem}</span>${r2}`;
+        } else {
+          document.getElementById("decodedPriceChain").textContent = "شكل غير متوافق";
+        }
+
+        // Decoded Price and visual count ups
+        animatePriceValueCount(price);
+
+        // Stamp time
+        const now = new Date();
+        document.getElementById("lastScanTime").textContent = String(now.getHours()).padStart(2, '0') + ":" + 
+          String(now.getMinutes()).padStart(2, '0') + ":" + 
+          String(now.getSeconds()).padStart(2, '0');
+
+        // Enable notify button
+        const btnNot = document.getElementById("btnNotifyManager");
+        btnNot.removeAttribute("disabled");
+        btnNot.classList.remove("opacity-50", "cursor-not-allowed");
+      }
+
+      // ANIMATED VALUE COUNT UP
+      function animatePriceValueCount(targetVal) {
+        const element = document.getElementById("decodedPriceNumber");
+        let current = 0;
+        const increment = Math.ceil(targetVal / 20) || 1;
+        
+        const counter = setInterval(() => {
+          current += increment;
+          if (current >= targetVal) {
+            current = targetVal;
+            clearInterval(counter);
+          }
+          element.textContent = current;
+        }, 30);
+      }
+
+      // VOICE SPEAKER READER OUT DIRECT
+      function announceProductDetails(productName, price) {
+        // Arabic verbal translation representation
+        const verbalPrice = arabicNumberToWords(price);
+        const finalSpokenText = `تم فحصُ ${productName}. السعر ${verbalPrice} جنيه مصري.`;
+        speakArabicText(finalSpokenText);
+      }
+
+      // REPEAT SPEAKER TRIGGER
+      function announceCurrentProduct() {
+        if (currentActiveProduct) {
+          announceProductDetails(currentActiveProduct.name, currentActiveProduct.extractedPrice);
+        } else {
+          speakArabicText("عذراً، يرجى القيام بمسح منتج لتلاوته.");
+        }
+      }
+
+      // VOICE VOLUME RANGER CONTROLLER
+      function updateTTSVolume(val) {
+        ttsVolume = parseFloat(val);
+      }
+
+      // WHATSAPP SEND MANAGER OUTBOUND REPORT
+      function notifyManager() {
+        if (!currentActiveProduct) return;
+        
+        const name = currentActiveProduct.name;
+        const barcode = currentActiveProduct.barcode;
+        const price = currentActiveProduct.extractedPrice;
+        
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('ar-EG');
+        const timeStr = now.toLocaleTimeString('ar-EG');
+
+        const managerPhone = "01101362148";
+        
+        const message = `السلام عليكم حاج إسماعيل،
+
+تم الاستعلام عن المنتج:
+
+اسم المنتج:
+${name}
+
+الباركود:
+${barcode}
+
+السعر المستخرج من الكود:
+${price} جنيه مصري
+
+التاريخ:
+${dateStr}
+
+الوقت:
+${timeStr}
+
+تم الإرسال من نظام مول السعودية للأدوات المنزلية.`;
+
+        const encodedMsg = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/${managerPhone}?text=${encodedMsg}`;
+        
+        // Open
+        window.open(whatsappUrl, '_blank');
+        logDatabaseSystem("تم بنجاح إرسال نموذج واتساب للمدير الحاج إسماعيل عن سلعة " + name);
+      }
+
+      // SAVE RECORD TO LOCAL SCAN ARCHIVE
+      function saveToScanHistory(product, price) {
+        const now = new Date();
+        const record = {
+          name: product.name,
+          barcode: product.barcode,
+          price: price,
+          date: now.toISOString().split('T')[0],
+          time: now.toTimeString().split(' ')[0]
+        };
+
+        scanHistory.unshift(record);
+        localStorage.setItem("sm_pos_history", JSON.stringify(scanHistory));
+        
+        // Render systems update
+        renderHistoryList();
+        updateDashboardAndSidebarStats();
+        logDatabaseSystem(`[مسح كاشير] السلعة: ${product.name} | السعر: ${price} جنيه`);
+      }
+
+      // RENDER HISTORY ARCHIVE TABLE
+      function renderHistoryList() {
+        const tbody = document.getElementById("historyTableBody");
+        const emptyState = document.getElementById("historyEmptyState");
+        const filterText = document.getElementById("historySearchInput").value.trim().toLowerCase();
+
+        tbody.innerHTML = "";
+        
+        let filteredRecords = scanHistory;
+        if (filterText) {
+          filteredRecords = scanHistory.filter(r => 
+            r.name.toLowerCase().includes(filterText) || 
+            r.barcode.includes(filterText)
+          );
+        }
+
+        if (filteredRecords.length === 0) {
+          emptyState.classList.remove("hidden");
+          return;
+        } else {
+          emptyState.classList.add("hidden");
+        }
+
+        filteredRecords.forEach((record, index) => {
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-white/5 hover:bg-white/2 transition-colors";
+          
+          tr.innerHTML = `
+            <td class="p-4 font-bold text-white">${record.name}</td>
+            <td class="p-4 font-mono font-semibold text-[#00A94F] font-digital">${record.barcode}</td>
+            <td class="p-4 font-bold font-digital text-white/95">${record.price} ج.م</td>
+            <td class="p-4 text-white/55 font-mono text-[11px]">${record.date} ${record.time}</td>
+            <td class="p-4 text-left">
+              <button onclick="reflashScannedItemFromHistory(${index})" class="p-2 hover:bg-white/10 rounded-lg text-[#00FF41] hover:scale-105 transition-all aspect-square" title="عرض مجدداً">
+                <span class="material-symbols-outlined text-sm">visibility</span>
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // RE-DISPLAY LOGS FROM HISTORY
+      function reflashScannedItemFromHistory(index) {
+        const item = scanHistory[index];
+        const matchedProduct = dbProducts.find(p => p.barcode === item.barcode) || {
+          name: item.name,
+          barcode: item.barcode,
+          category: "قسم الاستكشاف الفوري",
+          image: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80",
+          description: "منتج من السجل المفحوص سابقاً. تم التعرف والتثبيت."
+        };
+
+        updateProductShowcase(matchedProduct, item.price);
+        switchTab("scanner");
+      }
+
+      // CLEAR HISTORIC LOGS Entirely
+      function clearScanHistory() {
+        if (confirm("هل أنت متأكد تماماً من رغبتك بمسح وتصفير سجل العمليات المؤرشف بالكامل؟")) {
+          scanHistory = [];
+          localStorage.setItem("sm_pos_history", JSON.stringify(scanHistory));
+          renderHistoryList();
+          updateDashboardAndSidebarStats();
+          logDatabaseSystem("تم مسح السجل الفوري للأرشيف بالكامل.");
+        }
+      }
+
+      // SIDEBAR & DASHBOARD STATS VALUE ASSIGNER
+      function updateDashboardAndSidebarStats() {
+        const totalCount = scanHistory.length;
+        
+        // Today calculations list
+        const todayDateStr = new Date().toISOString().split('T')[0];
+        const todayScans = scanHistory.filter(r => r.date === todayDateStr);
+        
+        // Assign elements
+        document.getElementById("quickTotalScans").textContent = todayScans.length;
+        document.getElementById("statTotalScans").textContent = totalCount;
+        document.getElementById("statTodayScans").textContent = todayScans.length;
+
+        // Progress bar daily percentage (assuming normal daily capability target of 100 scans)
+        const targetCapacity = 60;
+        const progressPercentage = Math.min((todayScans.length / targetCapacity) * 100, 100);
+        document.getElementById("quickStatsProgress").style.width = progressPercentage + "%";
+
+        // Calculate Favourite most scanned item
+        const counts = {};
+        scanHistory.forEach(r => { counts[r.name] = (counts[r.name] || 0) + 1; });
+        let topItem = "لا يوجد";
+        let topCount = 0;
+        Object.keys(counts).forEach(name => {
+          if (counts[name] > topCount) {
+            topCount = counts[name];
+            topItem = name;
+          }
+        });
+        document.getElementById("quickFavItem").textContent = topCount > 0 ? `${topItem} (${topCount} مرات)` : "لا يوجد";
+
+        // Average price value
+        let avgPrice = 0;
+        if (todayScans.length > 0) {
+          const sum = todayScans.reduce((acc, r) => acc + r.price, 0);
+          avgPrice = Math.round(sum / todayScans.length);
+        }
+        document.getElementById("statAveragePrice").textContent = avgPrice;
+
+        // Top category calculations
+        const catCounts = {};
+        scanHistory.forEach(r => {
+          const p = dbProducts.find(product => product.barcode === r.barcode);
+          if (p) {
+            catCounts[p.category] = (catCounts[p.category] || 0) + 1;
+          }
+        });
+        let topCat = "لا يوجد";
+        let topCatCount = 0;
+        Object.keys(catCounts).forEach(cat => {
+          if (catCounts[cat] > topCatCount) {
+            topCatCount = catCounts[cat];
+            topCat = cat;
+          }
+        });
+        document.getElementById("statTopCategory").textContent = topCat;
+
+        // Update ratios progress bars
+        let totalValForCategories = 0;
+        const countCategories = { "أواني الطهي": 0, "أجهزة منزلية": 0, "أدوات تقديم": 0 };
+        
+        scanHistory.forEach(r => {
+          const p = dbProducts.find(prod => prod.barcode === r.barcode);
+          if (p && p.category in countCategories) {
+            countCategories[p.category]++;
+            totalValForCategories++;
+          }
+        });
+
+        if (totalValForCategories > 0) {
+          const cookRatio = Math.round((countCategories["أواني الطهي"] / totalValForCategories) * 100);
+          const appRatio = Math.round((countCategories["أجهزة منزلية"] / totalValForCategories) * 100);
+          const presentRatio = Math.round((countCategories["أدوات تقديم"] / totalValForCategories) * 100);
+
+          document.getElementById("ratioCookwarePercent").textContent = cookRatio + "%";
+          document.getElementById("ratioCookwareBar").style.width = cookRatio + "%";
+
+          document.getElementById("ratioAppliancesPercent").textContent = appRatio + "%";
+          document.getElementById("ratioAppliancesBar").style.width = appRatio + "%";
+
+          document.getElementById("ratioKitchenPercent").textContent = presentRatio + "%";
+          document.getElementById("ratioKitchenBar").style.width = presentRatio + "%";
+        } else {
+          document.getElementById("ratioCookwarePercent").textContent = "0%";
+          document.getElementById("ratioCookwareBar").style.width = "0%";
+          document.getElementById("ratioAppliancesPercent").textContent = "0%";
+          document.getElementById("ratioAppliancesBar").style.width = "0%";
+          document.getElementById("ratioKitchenPercent").textContent = "0%";
+          document.getElementById("ratioKitchenBar").style.width = "0%";
+        }
+      }
+
+      // SYSTEM LOG CHANNELS
+      function logDatabaseSystem(message) {
+        const container = document.getElementById("dashboardLiveLogs");
+        const div = document.createElement("div");
+        const now = new Date();
+        const timeStamp = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0');
+        div.textContent = `[${timeStamp}] ${message}`;
+        container.insertBefore(div, container.firstChild);
+      }
+
+      // ==========================================
+      // ADMIN AUTHENTICATION CONTROLLER
+      // ==========================================
+      function toggleAdminAuth() {
+        if (isAdminAuthenticated) {
+          // Log out
+          isAdminAuthenticated = false;
+          updateAdminStateUI();
+        } else {
+          // Bring view
+          switchTab("database");
+        }
+      }
+
+      function submitAdminPassword() {
+        const pass = document.getElementById("adminPasswordInput").value.trim();
+        if (pass.toLowerCase() === "admin") {
+          isAdminAuthenticated = true;
+          updateAdminStateUI();
+          document.getElementById("adminPasswordInput").value = "";
+          logDatabaseSystem("قام المسؤول الحاج إسماعيل بتسجيل دخول معتمد للقاعدة.");
+        } else {
+          alert("خطأ: الرمز السري الذي أدخلته غير متطابق!");
+          logDatabaseSystem("محاولة فاشلة لتخطي بوابات المسؤول.");
+        }
+      }
+
+      function updateAdminStateUI() {
+        const badge = document.getElementById("adminLockBadge");
+        const badgeText = document.getElementById("adminLockText");
+        const badgeDot = document.getElementById("adminLockDot");
+        const badgeIcon = document.getElementById("adminLockIcon");
+
+        const promptBox = document.getElementById("adminLockedPrompt");
+        const contentBox = document.getElementById("adminPanelContent");
+
+        if (isAdminAuthenticated) {
+          // Unlocked UI
+          badge.classList.remove("bg-red-950/40", "text-red-400", "border-red-500/30");
+          badge.classList.add("bg-[#00A94F]/25", "text-[#00FF41]", "border-[#00FF41]/40");
+          badgeDot.classList.remove("bg-red-400");
+          badgeDot.classList.add("bg-[#00FF41]");
+          badgeIcon.textContent = "lock_open";
+          badgeText.textContent = "المسؤول: نشط (تسجيل خروج)";
+
+          promptBox.style.display = "none";
+          contentBox.classList.remove("hidden");
+        } else {
+          // Locked UI
+          badge.classList.add("bg-red-950/40", "text-red-400", "border-red-500/30");
+          badge.classList.remove("bg-[#00A94F]/25", "text-[#00FF41]", "border-[#00FF41]/40");
+          badgeDot.classList.add("bg-red-400");
+          badgeDot.classList.remove("bg-[#00FF41]");
+          badgeIcon.textContent = "lock";
+          badgeText.textContent = "مغلق - يرجى تسجيل الدخول";
+
+          promptBox.style.display = "flex";
+          contentBox.classList.add("hidden");
+        }
+      }
+
+      // ==========================================
+      // CRUD: MANAGE PRODUCTS DATA IMPLEMENTATION
+      // ==========================================
+      function renderDatabaseProducts() {
+        const tbody = document.getElementById("dbProductsTableBody");
+        const emptyState = document.getElementById("dbProductsEmptyState");
+        const filterText = document.getElementById("dbSearchInput").value.trim().toLowerCase();
+
+        tbody.innerHTML = "";
+        
+        let filtered = dbProducts;
+        if (filterText) {
+          filtered = dbProducts.filter(p => 
+            p.name.toLowerCase().includes(filterText) ||
+            p.barcode.includes(filterText) ||
+            p.category.toLowerCase().includes(filterText)
+          );
+        }
+
+        if (filtered.length === 0) {
+          emptyState.classList.remove("hidden");
+        } else {
+          emptyState.classList.add("hidden");
+        }
+
+        filtered.forEach((prod, index) => {
+          const valPrice = extractPrice(prod.barcode);
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-white/5 hover:bg-white/2 transition-colors";
+          
+          tr.innerHTML = `
+            <td class="p-3">
+              <img src="${prod.image || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=150&q=80'}" alt="${prod.name}" class="w-10 h-10 object-cover rounded-lg border border-white/10 shadow">
+            </td>
+            <td class="p-3 font-semibold text-white">${prod.name}</td>
+            <td class="p-3 font-mono text-[#00A94F] font-digital font-bold">${prod.barcode}</td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 bg-white/5 text-white/70 rounded-md text-[10px] border border-white/5">${prod.category}</span>
+            </td>
+            <td class="p-3 font-bold font-digital text-[#00FF41] text-right font-digital">${valPrice} ج.م</td>
+            <td class="p-3 text-left">
+              <div class="flex justify-end gap-1.5">
+                <button onclick="editProductFromDB(${index})" class="p-1 hover:bg-white/5 rounded text-amber-400 hover:scale-105 transition-all" title="تعديل">
+                  <span class="material-symbols-outlined text-sm">edit</span>
+                </button>
+                <button onclick="deleteProductFromDB(${index})" class="p-1 hover:bg-white/5 rounded text-red-400 hover:scale-105 transition-all" title="حذف">
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // HELPER AUTO PRICE BARCODE CALCULATOR DEFINER FOR FORM
+      function generateRandomBarcodeForPricing() {
+        const typedPrice = prompt("أدخل السعر المراد توليد باركود مشفر له (مثال: 650 أو 1200):");
+        if (!typedPrice || isNaN(typedPrice)) return;
+        const cleanPrice = String(Math.round(Number(typedPrice)));
+        
+        // Structure rule: 5359*11{PRICE}06. Remove first 2 (11), remove last 2 (06), what remains is price!
+        // So let's wrap it in 11 and 06: `5359*11${cleanPrice}06`
+        const generatedCode = `5359*11${cleanPrice}06`;
+        document.getElementById("prodBarcodeInput").value = generatedCode;
+        logDatabaseSystem("تم بنجاح توليد الكود المشفر: " + generatedCode);
+      }
+
+      // SAVE FORM DATA ADD / EDIT
+      function saveProductForm() {
+        const name = document.getElementById("prodNameInput").value.trim();
+        const barcode = document.getElementById("prodBarcodeInput").value.trim();
+        const category = document.getElementById("prodCategorySelect").value;
+        const image = document.getElementById("prodImageInput").value.trim();
+        const description = document.getElementById("prodDescInput").value.trim();
+        const editIdx = document.getElementById("editProductIndex").value;
+
+        if (!name || !barcode) {
+          alert("خطأ: يجب ملء حقول الاسم والباركود لحفظ السلعة.");
+          return;
+        }
+
+        const newProd = {
+          name: name,
+          barcode: barcode,
+          category: category,
+          image: image || "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80",
+          description: description || "لا يوجد وصف حالي لهذا المنتج."
+        };
+
+        if (editIdx !== "") {
+          // UPDATE EXISTING PRODUCT
+          const originalIndex = parseInt(editIdx);
+          dbProducts[originalIndex] = newProd;
+          logDatabaseSystem("تعديل وحفظ المنتج: " + name);
+        } else {
+          // ADD NEW PRODUCT
+          // Check if barcode already exists
+          const exists = dbProducts.some(p => p.barcode === barcode);
+          if (exists) {
+            alert("خطأ: يتواجد منتج آخر مسبقاً بنفس كود هذا الباركود.");
+            return;
+          }
+          dbProducts.unshift(newProd);
+          logDatabaseSystem("إضافة منتج جديد للقاعدة: " + name);
+        }
+
+        // Save
+        localStorage.setItem("sm_pos_db", JSON.stringify(dbProducts));
+        
+        // Reset and refresh
+        cancelProductEdit();
+        renderDatabaseProducts();
+        updateDashboardAndSidebarStats();
+      }
+
+      // EDIT TRIGGER
+      function editProductFromDB(index) {
+        const prod = dbProducts[index];
+        
+        document.getElementById("formTitle").textContent = "تعديل بيانات: " + prod.name;
+        document.getElementById("prodNameInput").value = prod.name;
+        document.getElementById("prodBarcodeInput").value = prod.barcode;
+        document.getElementById("prodCategorySelect").value = prod.category;
+        document.getElementById("prodImageInput").value = prod.image;
+        document.getElementById("prodDescInput").value = prod.description;
+        document.getElementById("editProductIndex").value = index;
+
+        // Visual layout trigger
+        document.getElementById("btnCancelEdit").classList.remove("hidden");
+        document.getElementById("btnSaveProduct").textContent = "حفظ التعديلات";
+        
+        // Scroll to form nicely
+        document.getElementById("btnSaveProduct").scrollIntoView({ behavior: 'smooth' });
+      }
+
+      // CANCEL / RESET FORM
+      function cancelProductEdit() {
+        document.getElementById("formTitle").textContent = "إضافة منتج جديد لقاعدة البيانات";
+        document.getElementById("prodNameInput").value = "";
+        document.getElementById("prodBarcodeInput").value = "";
+        document.getElementById("prodCategorySelect").value = "أواني الطهي";
+        document.getElementById("prodImageInput").value = "";
+        document.getElementById("prodDescInput").value = "";
+        document.getElementById("editProductIndex").value = "";
+
+        document.getElementById("btnCancelEdit").classList.add("hidden");
+        document.getElementById("btnSaveProduct").textContent = "حفظ المنتج";
+      }
+
+      // DELETE PRODUCT
+      function deleteProductFromDB(index) {
+        const name = dbProducts[index].name;
+        if (confirm("هل تريد بالتأكيد حذف سلعة " + name + " من قاعدة المنتجات نهائياً؟")) {
+          dbProducts.splice(index, 1);
+          localStorage.setItem("sm_pos_db", JSON.stringify(dbProducts));
+          renderDatabaseProducts();
+          updateDashboardAndSidebarStats();
+          cancelProductEdit();
+          logDatabaseSystem("تم حذف المنتج من قاعدة البيانات: " + name);
+        }
+      }
+
+      // IMPORT JSON DATA TO PRODUCTS DB
+      function importDatabaseJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const imported = JSON.parse(e.target.result);
+            if (Array.isArray(imported)) {
+              // Validations
+              let successCount = 0;
+              imported.forEach(p => {
+                if (p.name && p.barcode) {
+                  // Merge without duplicates
+                  const foundIdx = dbProducts.findIndex(existing => existing.barcode === p.barcode);
+                  if (foundIdx !== -1) {
+                    dbProducts[foundIdx] = p; // Overwrite
+                  } else {
+                    dbProducts.unshift(p); // Add new
+                  }
+                  successCount++;
+                }
+              });
+
+              localStorage.setItem("sm_pos_db", JSON.stringify(dbProducts));
+              renderDatabaseProducts();
+              updateDashboardAndSidebarStats();
+              alert(`تم استيراد وتحديث عدد ${successCount} منتج بنجاح.`);
+              logDatabaseSystem(`تم استيراد ${successCount} منتج من ملف خارجي.`);
+            } else {
+              alert("خطأ: صياغة ملف الـ JSON غير متطابقة مع قالب منتجات الكاشير.");
+            }
+          } catch (err) {
+            alert("فشل قراءة ملف الـ JSON. تأكد من خلوه من الأخطاء التنسيقية.");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      // EXPORT DATABASES AS DOWNLOADABLE JSON FILE
+      function exportDatabaseJSON() {
+        try {
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dbProducts, null, 2));
+          const dlAnchorElem = document.createElement('a');
+          dlAnchorElem.setAttribute("href", dataStr);
+          dlAnchorElem.setAttribute("download", "SM_HOUSEWARES_STORE_PRODUCTS_BACKUP.json");
+          dlAnchorElem.click();
+          logDatabaseSystem("قام المسؤول بتصدير نسخة احتياطية من قاعدة البيانات بنجاح.");
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // REBUILD INITIAL FACTORY PRODUCTS
+      function resetToInitialDatabase() {
+        if (confirm("هل تريد حقاً مسح المنتجات المسجلة والعودة لقائمة المنتجات الأساسية السبعة لتهيئة الكاشير؟")) {
+          dbProducts = [...initialProducts];
+          localStorage.setItem("sm_pos_db", JSON.stringify(dbProducts));
+          renderDatabaseProducts();
+          updateDashboardAndSidebarStats();
+          cancelProductEdit();
+          logDatabaseSystem("تم استعادة قاعدة بيانات المصنع للمنتجات السبعة الرئيسية.");
+        }
+      }
+    </script>
+  </body>
 </html>
